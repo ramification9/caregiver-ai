@@ -676,7 +676,7 @@ def mock_generate_summary(days=14):
         "SELECT name, dosage, frequency, scheduled_time FROM medications WHERE is_active=1 ORDER BY name"
     ).fetchall()
     alert_rows = conn.execute(
-        "SELECT alert_type, alert_message, created_at FROM alerts WHERE created_at >= ? AND alert_type='emergency' ORDER BY created_at DESC",
+        "SELECT alert_type, alert_message, created_at FROM alerts WHERE created_at >= ? AND alert_type NOT IN ('pattern') ORDER BY created_at DESC",
         (cutoff,)
     ).fetchall()
     patient = conn.execute("SELECT name, is_veteran FROM patients LIMIT 1").fetchone()
@@ -760,39 +760,50 @@ def mock_generate_summary(days=14):
     else:
         lines.append("  No specific positive observations recorded.")
 
-    if emergency_count > 0:
-        lines += ["", "INCIDENTS AND EMERGENCY FLAGS", "─" * 46]
-        for a in alert_rows:
-            lines.append(f"  [{a['created_at'][:10]}]  {a['alert_message']}")
-
-    if custom_counts:
-        lines += ["", "CAREGIVER-NOTED TOPICS", "─" * 46]
-        for topic, count in sorted(custom_counts.items(), key=lambda x: x[1], reverse=True):
-            lines.append(f"  • {topic}  ({count} mention{'s' if count > 1 else ''})")
-
-    lines += [
-        "",
-        "FOR THE CLINICIAN",
-        "─" * 46,
-        f"This summary reflects observations reported by the caregiver of {patient_name}",
-        "through a structured daily logging tool. All information represents the",
-        "caregiver's direct observations and should be reviewed alongside clinical",
-        "assessment. The caregiver retains final say on all care decisions.",
-        "",
+    emergency_flags = [
+        {
+            "date": a["created_at"][:10],
+            "message": a["alert_message"],
+            "type": a["alert_type"]
+        } for a in alert_rows
     ]
-    if SANDBOX_MODE:
-        lines += [
-            "[SANDBOX] In production, this narrative is drafted by Claude AI",
-            "using the full text of each entry, not keyword extraction alone.",
-        ]
+
+    custom_list = [
+        {"name": k if isinstance(k, str) else k.get("name", ""), "count": v}
+        for k, v in sorted(custom_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    concerns_list = [
+        {"category": cat, "label": label_map.get(cat, cat.title()),
+         "count": count, "total": total,
+         "pct": round(count / total * 100)}
+        for cat, count in sorted(concern_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    positives_list = [
+        {"category": cat, "label": label_map.get(cat, cat.title()), "count": count}
+        for cat, count in sorted(positive_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    meds_list = [
+        {"name": m["name"], "dosage": m["dosage"],
+         "frequency": m["frequency"], "scheduled_time": m["scheduled_time"]}
+        for m in meds
+    ]
 
     return {
-        "summary": "\n".join(lines),
+        "patient": {"name": patient_name, "is_veteran": is_veteran},
+        "period":  {"start": first_date, "end": last_date, "days": days},
+        "total_entries":    total,
+        "emergency_count":  emergency_count,
+        "medications":      meds_list,
+        "concerns":         concerns_list,
+        "positives":        positives_list,
+        "emergency_flags":  emergency_flags,
+        "custom_topics":    custom_list,
+        "sandbox":          SANDBOX_MODE,
         "entries_reviewed": total,
-        "period_days": days,
-        "concerns": concern_counts,
-        "positives": positive_counts,
-        "date_range": f"{first_date} to {last_date}"
+        "date_range":       f"{first_date} to {last_date}"
     }
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

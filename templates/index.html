@@ -121,7 +121,25 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .pattern-count { font-size: 32px; font-weight: 800; color: var(--amber); flex-shrink: 0; margin-left: auto; }
 .no-patterns { background: var(--positive-bg); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--positive-text); font-weight: 600; }
 
-#summary-output { background: #F8F9FA; border-radius: var(--radius); padding: 20px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; white-space: pre-wrap; border: 1px solid var(--border); display: none; }
+#summary-output { display: none; }
+.sum-header { background: var(--navy); color: white; border-radius: var(--radius) var(--radius) 0 0; padding: 20px 24px; }
+.sum-header h3 { font-size:18px; margin-bottom:6px; }
+.sum-header p  { font-size:13px; opacity:0.75; margin:0; }
+.sum-section { border: 1px solid var(--border); border-top: none; padding: 18px 20px; background:white; }
+.sum-section:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.sum-section h4 { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:12px; }
+.sum-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.sum-bar-label { font-size:13px; font-weight:600; min-width:170px; color:var(--text); }
+.sum-bar-track { flex:1; background:#F0F0F0; border-radius:50px; height:10px; overflow:hidden; }
+.sum-bar-fill  { height:100%; border-radius:50px; background: var(--concern-text); }
+.sum-bar-fill.positive { background: #27AE60; }
+.sum-bar-pct   { font-size:12px; color:var(--muted); min-width:50px; text-align:right; }
+.sum-med-pill  { display:inline-block; background:#EAF4FB; color:#1A5276; border-radius:50px; padding:5px 14px; font-size:13px; font-weight:600; margin:3px; }
+.sum-flag-row  { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.sum-flag-row:last-child { border-bottom:none; }
+.sum-flag-date { color:var(--muted); white-space:nowrap; min-width:90px; }
+.sum-topic-chip { display:inline-block; background:#F4ECF7; color:#6C3483; border-radius:50px; padding:4px 12px; font-size:13px; font-weight:600; margin:3px; }
+.sum-footer { font-size:12px; color:var(--muted); line-height:1.7; padding: 14px 20px; background:#F8F9FA; border:1px solid var(--border); border-top:none; border-radius: 0 0 var(--radius) var(--radius); }
 .summary-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 #days-select { padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; }
 
@@ -427,7 +445,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
         <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
         <button class="btn btn-secondary" onclick="window.print()">Print / Save PDF</button>
       </div>
-      <pre id="summary-output"></pre>
+      <div id="summary-output"></div>
       <p id="summary-meta" style="font-size:12px;color:var(--muted);margin-top:12px;display:none;"></p>
     </div>
   </section>
@@ -1284,11 +1302,24 @@ async function loadPatterns() {
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
+const FLAG_BADGE = {
+  mental:          'MENTAL HEALTH CRISIS',
+  physical:        'MEDICAL EMERGENCY',
+  caregiver_safety:'CAREGIVER SAFETY',
+  third_party:     'VIOLENCE',
+  emergency:       'EMERGENCY',
+  incident:        'INCIDENT'
+};
+const FLAG_COLOR = {
+  mental:'#6A1B9A', physical:'#C62828', caregiver_safety:'#2E7D32',
+  third_party:'#E65100', emergency:'#C62828', incident:'#6A1B9A'
+};
+
 async function generateSummary() {
   const days = document.getElementById('days-select').value;
   const out  = document.getElementById('summary-output');
   const meta = document.getElementById('summary-meta');
-  out.textContent = 'Generating…';
+  out.innerHTML = '<p style="color:var(--muted);padding:20px;">Generating…</p>';
   out.style.display = 'block';
 
   const r = await fetch('/api/summary', {
@@ -1297,11 +1328,97 @@ async function generateSummary() {
     body: JSON.stringify({days: parseInt(days)})
   });
   const d = await r.json();
-  out.textContent = d.summary;
-  if (d.entries_reviewed) {
-    meta.textContent = `${d.entries_reviewed} entries reviewed · ${d.date_range}`;
-    meta.style.display = 'block';
+  if (!d.patient) { out.innerHTML = '<p style="padding:20px;color:var(--muted);">No entries found for this period.</p>'; return; }
+
+  const p = d.patient;
+  const period = d.period;
+
+  let html = `
+  <div class="sum-header">
+    <h3>Caregiver Observation Summary</h3>
+    <p>${escHtml(p.name)}${p.is_veteran ? ' · Veteran' : ''} &nbsp;|&nbsp; ${escHtml(period.start)} through ${escHtml(period.end)} (${period.days} days) &nbsp;|&nbsp; ${d.total_entries} entries · ${d.emergency_count} flag${d.emergency_count !== 1 ? 's' : ''}</p>
+  </div>`;
+
+  // Medications
+  html += `<div class="sum-section"><h4>Current Medications</h4>`;
+  if (d.medications.length) {
+    html += d.medications.map(m => {
+      let label = escHtml(m.name);
+      if (m.dosage) label += ` ${escHtml(m.dosage)}`;
+      if (m.frequency) label += ` · ${escHtml(m.frequency)}`;
+      if (m.scheduled_time) label += ` · ${escHtml(m.scheduled_time)}`;
+      return `<span class="sum-med-pill">${label}</span>`;
+    }).join('');
+  } else {
+    html += '<p style="color:var(--muted);font-size:13px;">No medications on file.</p>';
   }
+  html += '</div>';
+
+  // Concerns
+  html += `<div class="sum-section"><h4>Areas of Concern</h4>`;
+  if (d.concerns.length) {
+    html += d.concerns.map(c =>
+      `<div class="sum-bar-row">
+        <span class="sum-bar-label">${escHtml(c.label)}</span>
+        <div class="sum-bar-track"><div class="sum-bar-fill" style="width:${c.pct}%"></div></div>
+        <span class="sum-bar-pct">${c.count}/${c.total} &nbsp;(${c.pct}%)</span>
+      </div>`
+    ).join('');
+  } else {
+    html += '<p style="color:var(--muted);font-size:13px;">No recurring concerns flagged during this period.</p>';
+  }
+  html += '</div>';
+
+  // Positives
+  html += `<div class="sum-section"><h4>Positive Observations</h4>`;
+  if (d.positives.length) {
+    html += d.positives.map(c =>
+      `<div class="sum-bar-row">
+        <span class="sum-bar-label">${escHtml(c.label)}</span>
+        <div class="sum-bar-track"><div class="sum-bar-fill positive" style="width:${Math.min(100, c.count * 20)}%"></div></div>
+        <span class="sum-bar-pct">${c.count} noted</span>
+      </div>`
+    ).join('');
+  } else {
+    html += '<p style="color:var(--muted);font-size:13px;">No specific positive observations recorded.</p>';
+  }
+  html += '</div>';
+
+  // Flags
+  if (d.emergency_flags.length) {
+    html += `<div class="sum-section"><h4>Flags & Incidents</h4>`;
+    html += d.emergency_flags.map(f => {
+      const color = FLAG_COLOR[f.type] || '#888';
+      const label = FLAG_BADGE[f.type] || f.type.toUpperCase();
+      return `<div class="sum-flag-row">
+        <span class="sum-flag-date">${escHtml(f.date)}</span>
+        <span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;">${label}</span>
+        <span>${escHtml(f.message)}</span>
+      </div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  // Custom topics
+  if (d.custom_topics.length) {
+    html += `<div class="sum-section"><h4>Caregiver-Noted Topics</h4>`;
+    html += d.custom_topics.map(t =>
+      `<span class="sum-topic-chip">🏷 ${escHtml(t.name)} <span style="opacity:0.6;font-weight:400;">(${t.count}×)</span></span>`
+    ).join('');
+    html += '</div>';
+  }
+
+  // Footer
+  html += `<div class="sum-footer">
+    This summary reflects observations reported by the caregiver of ${escHtml(p.name)} through a structured daily logging tool.
+    All information represents the caregiver's direct observations and should be reviewed alongside clinical assessment.
+    The caregiver retains final say on all care decisions.
+    ${d.sandbox ? '<br><br><strong>[Sandbox]</strong> In production, this narrative is drafted by AI using the full text of each entry, not keyword extraction alone.' : ''}
+  </div>`;
+
+  out.innerHTML = html;
+  meta.textContent = `${d.entries_reviewed} entries reviewed · ${d.date_range}`;
+  meta.style.display = 'block';
 }
 
 // ── Alerts ────────────────────────────────────────────────────────────────────
