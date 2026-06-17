@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareLog — Veteran Caregiver Log</title>
+<style>
+:root {
+  --navy:    #1B4F72;
+  --blue:    #2874A6;
+  --green:   #1E8449;
+  --amber:   #B7770D;
+  --red:     #C0392B;
+  --bg:      #EEF2F7;
+  --card:    #FFFFFF;
+  --text:    #2C3E50;
+  --muted:   #6C757D;
+  --border:  #D5D8DC;
+  --radius:  8px;
+  --shadow:  0 2px 8px rgba(0,0,0,0.08);
+  --concern-bg:   #FADBD8;
+  --concern-text: #922B21;
+  --positive-bg:  #D5F5E3;
+  --positive-text:#1E8449;
+  --noted-bg:     #EBF5FB;
+  --noted-text:   #1A5276;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.6; }
+
+/* Sandbox banner */
+.sandbox-bar { background: #7D6608; color: #FEF9E7; text-align: center; padding: 8px 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
+
+/* Header */
+header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+header h1 span { font-weight: 300; opacity: 0.8; font-size: 16px; }
+#alert-badge { background: var(--red); color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; font-weight: 700; display: none; }
+
+/* Nav */
+nav { background: white; border-bottom: 2px solid var(--border); display: flex; padding: 0 16px; overflow-x: auto; }
+nav button { background: none; border: none; cursor: pointer; padding: 14px 20px; font-size: 14px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; transition: color 0.2s, border-color 0.2s; }
+nav button:hover { color: var(--navy); }
+nav button.active { color: var(--navy); border-bottom-color: var(--navy); }
+nav button .badge { background: var(--red); color: white; border-radius: 10px; padding: 1px 6px; font-size: 11px; margin-left: 6px; }
+
+/* Main */
+main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* Check-in greeting */
+#checkin-box { background: var(--card); border-left: 4px solid var(--blue); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px; box-shadow: var(--shadow); }
+#checkin-box p { color: var(--blue); font-size: 15px; font-weight: 500; }
+#checkin-box .context-tag { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* Cards */
+.card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.card h2 { font-size: 17px; color: var(--navy); margin-bottom: 16px; }
+
+/* Note input */
+#note-input { width: 100%; min-height: 140px; padding: 14px; font-size: 16px; border: 2px solid var(--border); border-radius: var(--radius); resize: vertical; font-family: inherit; line-height: 1.7; transition: border-color 0.2s; }
+#note-input:focus { outline: none; border-color: var(--blue); }
+#note-input::placeholder { color: #AAB7C4; }
+.input-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+#char-count { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+/* Buttons */
+.btn { padding: 11px 22px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--navy); color: white; }
+.btn-secondary { background: var(--bg); color: var(--navy); border: 1px solid var(--border); }
+.btn-voice { background: white; border: 2px solid var(--blue); color: var(--blue); padding: 10px 18px; border-radius: 50px; display: flex; align-items: center; gap: 8px; }
+.btn-voice.recording { background: var(--red); border-color: var(--red); color: white; animation: pulse 1.2s infinite; }
+.btn-danger { background: var(--red); color: white; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+
+/* Extraction result */
+#extraction-result { display: none; }
+.result-note { padding: 12px 16px; border-radius: var(--radius); font-weight: 500; margin-bottom: 16px; }
+.result-note.ok     { background: var(--positive-bg); color: var(--positive-text); }
+.result-note.warn   { background: #FEF9E7; color: var(--amber); }
+.result-note.danger { background: var(--concern-bg); color: var(--concern-text); }
+.tags-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 50px; font-size: 13px; font-weight: 600; }
+.tag-concerning { background: var(--concern-bg); color: var(--concern-text); }
+.tag-positive    { background: var(--positive-bg); color: var(--positive-text); }
+.tag-noted       { background: var(--noted-bg); color: var(--noted-text); }
+.tag-icon { font-size: 15px; }
+.tag-correct-btn { background: none; border: none; cursor: pointer; font-size: 11px; opacity: 0.6; margin-left: 4px; }
+.tag-correct-btn:hover { opacity: 1; }
+.sandbox-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+/* History */
+.entry-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); border-left: 4px solid var(--border); cursor: pointer; transition: box-shadow 0.2s; }
+.entry-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.entry-card.emergency { border-left-color: var(--red); }
+.entry-card.has-concern { border-left-color: var(--amber); }
+.entry-card.all-positive { border-left-color: var(--green); }
+.entry-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; gap: 12px; align-items: center; }
+.entry-meta .emerg-flag { background: var(--red); color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+.entry-preview { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+.entry-full { display: none; font-size: 14px; color: var(--text); margin-bottom: 10px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; white-space: pre-wrap; }
+.entry-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+.empty-state p { margin-bottom: 12px; font-size: 15px; }
+
+/* Pattern flags */
+.pattern-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); border-left: 4px solid var(--amber); display: flex; align-items: flex-start; gap: 16px; }
+.pattern-icon { font-size: 28px; flex-shrink: 0; }
+.pattern-body h3 { font-size: 15px; color: var(--amber); font-weight: 700; margin-bottom: 4px; }
+.pattern-body p { font-size: 14px; color: var(--text); }
+.pattern-count { font-size: 32px; font-weight: 800; color: var(--amber); flex-shrink: 0; margin-left: auto; }
+.no-patterns { background: var(--positive-bg); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--positive-text); font-weight: 600; }
+
+/* Summary */
+#summary-output { background: #F8F9FA; border-radius: var(--radius); padding: 20px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; white-space: pre-wrap; border: 1px solid var(--border); display: none; }
+.summary-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+#days-select { padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; }
+
+/* Alerts */
+.alert-card { background: var(--card); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px; box-shadow: var(--shadow); display: flex; gap: 16px; align-items: flex-start; }
+.alert-card.emergency { border-left: 4px solid var(--red); }
+.alert-card.pattern { border-left: 4px solid var(--amber); }
+.alert-type-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 4px; white-space: nowrap; }
+.badge-emergency { background: var(--concern-bg); color: var(--concern-text); }
+.badge-pattern { background: #FEF9E7; color: var(--amber); }
+.alert-body { flex: 1; }
+.alert-body p { font-size: 14px; margin-bottom: 4px; }
+.alert-body .alert-meta { font-size: 12px; color: var(--muted); }
+.lock-icon { font-size: 18px; opacity: 0.5; flex-shrink: 0; }
+.lock-explain { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Emergency overlay */
+#emergency-overlay { display: none; position: fixed; inset: 0; background: #7B241C; color: white; z-index: 1000; overflow-y: auto; padding: 32px 24px; }
+.emergency-inner { max-width: 600px; margin: 0 auto; }
+.emergency-header { font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8; margin-bottom: 12px; }
+.emergency-title { font-size: 30px; font-weight: 800; line-height: 1.2; margin-bottom: 24px; }
+.crisis-lines { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.crisis-line { background: rgba(255,255,255,0.15); border-radius: var(--radius); padding: 16px 20px; }
+.crisis-line .org { font-size: 13px; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
+.crisis-line .number { font-size: 26px; font-weight: 800; margin: 4px 0; }
+.crisis-line .detail { font-size: 13px; opacity: 0.8; }
+.emergency-note { background: rgba(0,0,0,0.2); border-radius: var(--radius); padding: 16px; font-size: 14px; line-height: 1.7; margin-bottom: 24px; }
+.emergency-note strong { display: block; margin-bottom: 6px; font-size: 15px; }
+#detected-phrase { font-style: italic; opacity: 0.9; margin-top: 12px; font-size: 13px; }
+#emergency-continue { background: white; color: var(--red); font-size: 15px; font-weight: 700; padding: 14px 28px; border: none; border-radius: var(--radius); cursor: pointer; }
+
+/* Tag correction modal */
+#correction-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 900; align-items: center; justify-content: center; }
+#correction-modal.open { display: flex; }
+.modal-box { background: white; border-radius: var(--radius); padding: 28px; max-width: 440px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+.modal-box h3 { color: var(--navy); margin-bottom: 6px; }
+.modal-box p { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+.correction-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.correction-row:last-of-type { border-bottom: none; }
+.correction-label { font-size: 14px; font-weight: 600; }
+.correction-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+/* Spinner */
+.spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Print */
+@media print { .sandbox-bar, header, nav, .summary-controls, #summary-output ~ * { display: none !important; } #summary-output { display: block !important; border: none; font-size: 12px; } }
+
+/* Responsive */
+@media (max-width: 500px) { nav button { padding: 12px 14px; font-size: 13px; } .emergency-title { font-size: 24px; } .crisis-line .number { font-size: 22px; } }
+</style>
+</head>
+<body>
+
+{% if sandbox %}
+<div class="sandbox-bar">SANDBOX MODE — AI responses are simulated &nbsp;·&nbsp; No data sent to Claude or any external service</div>
+{% endif %}
+
+<header>
+  <h1>CareLog &nbsp;<span>Veteran Caregiver Daily Log</span></h1>
+  <span id="alert-badge">0</span>
+</header>
+
+<nav>
+  <button class="active" onclick="showSection('log')">Log Today</button>
+  <button onclick="showSection('history')">History</button>
+  <button onclick="showSection('patterns')">Patterns</button>
+  <button onclick="showSection('summary')">Summary</button>
+  <button id="alerts-tab" onclick="showSection('alerts')">Alerts</button>
+</nav>
+
+<main>
+
+  <!-- ── LOG TODAY ─────────────────────────────────────────────────────────── -->
+  <section id="sec-log" class="section active">
+
+    <div id="checkin-box" class="card">
+      <p id="checkin-greeting">Loading…</p>
+      <div class="context-tag" id="checkin-context"></div>
+    </div>
+
+    <div class="card">
+      <h2>What happened today?</h2>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:14px;">
+        Write or speak naturally. No forms. Just describe what you observed — sleep, mood, meals, appointments, anything that stood out.
+      </p>
+      <textarea id="note-input" placeholder="He didn't sleep again last night. Seemed on edge this morning and skipped his PT appointment. Ate a little at dinner…"></textarea>
+      <div class="input-row">
+        <button class="btn btn-voice" id="voice-btn" title="Tap to speak">
+          <span id="voice-icon">🎙</span>
+          <span id="voice-label">Speak</span>
+        </button>
+        <span id="char-count">0 characters</span>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitNote()">Log Entry</button>
+      </div>
+    </div>
+
+    <div id="extraction-result" class="card">
+      <h2>What the AI noticed</h2>
+      <div id="result-note-box" class="result-note warn"></div>
+      <div class="tags-grid" id="tags-grid"></div>
+      <p class="sandbox-note" id="extraction-sandbox-note"></p>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openCorrectionModal()">Correct any tags</button>
+        <button class="btn btn-secondary btn-sm" onclick="showSection('history')">View history</button>
+      </div>
+    </div>
+
+    {% if sandbox %}
+    <div style="text-align:center;margin-top:24px;">
+      <button class="btn btn-secondary" onclick="seedData()">Load sample data (14 days)</button>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Loads realistic veteran caregiver entries so you can explore patterns, summary, and alerts.</p>
+    </div>
+    {% endif %}
+
+  </section>
+
+  <!-- ── HISTORY ─────────────────────────────────────────────────────────── -->
+  <section id="sec-history" class="section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="color:var(--navy);font-size:18px;">Entry History</h2>
+      <span id="history-count" style="font-size:13px;color:var(--muted);"></span>
+    </div>
+    <div id="history-list"></div>
+    <div id="history-load-more" style="text-align:center;margin-top:16px;display:none;">
+      <button class="btn btn-secondary" onclick="loadHistory(true)">Load more</button>
+    </div>
+  </section>
+
+  <!-- ── PATTERNS ─────────────────────────────────────────────────────────── -->
+  <section id="sec-patterns" class="section">
+    <div style="margin-bottom:16px;">
+      <h2 style="color:var(--navy);font-size:18px;margin-bottom:6px;">Pattern Flags</h2>
+      <p style="font-size:14px;color:var(--muted);">Issues that have come up 3 or more times in the last 7 days. Worth mentioning to the care team.</p>
+    </div>
+    <div id="patterns-list"></div>
+    <div style="margin-top:20px;font-size:12px;color:var(--muted);text-align:center;">
+      Patterns are based on your logged entries. They flag what's repeating — you decide what to do with it.
+    </div>
+  </section>
+
+  <!-- ── SUMMARY ─────────────────────────────────────────────────────────── -->
+  <section id="sec-summary" class="section">
+    <div class="card">
+      <h2>Clinician-Ready Summary</h2>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:18px;">
+        Generate a plain-language summary of recent observations to share with a doctor, VA provider, or family member. You control what gets shared.
+      </p>
+      <div class="summary-controls">
+        <label for="days-select" style="font-size:14px;font-weight:600;">Period:</label>
+        <select id="days-select">
+          <option value="7">Last 7 days</option>
+          <option value="14" selected>Last 14 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+        <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
+        <button class="btn btn-secondary" onclick="window.print()">Print / Save PDF</button>
+      </div>
+      <pre id="summary-output"></pre>
+      <p id="summary-meta" style="font-size:12px;color:var(--muted);margin-top:12px;display:none;"></p>
+    </div>
+  </section>
+
+  <!-- ── ALERTS ─────────────────────────────────────────────────────────── -->
+  <section id="sec-alerts" class="section">
+    <div style="margin-bottom:16px;">
+      <h2 style="color:var(--navy);font-size:18px;margin-bottom:6px;">Alert Log</h2>
+      <p style="font-size:14px;color:var(--muted);">A permanent record of flagged entries. This log is locked — no single person can delete an entry from it.</p>
+    </div>
+    <div id="alerts-list"></div>
+    <div class="card" style="margin-top:20px;background:#F8F9FA;">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;">
+        <strong style="color:var(--text);">Why this log is locked:</strong> Alert records require agreement from multiple authorized parties before deletion is allowed.
+        Every deletion request — approved or denied — is itself permanently logged: who asked, when, and why. This protects both the caregiver and the person being cared for.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── EMERGENCY OVERLAY ──────────────────────────────────────────────────── -->
+<div id="emergency-overlay">
+  <div class="emergency-inner">
+    <p class="emergency-header">⚠ Urgent — Stop and Read This</p>
+    <h2 class="emergency-title">Your entry contains language that may signal a crisis.</h2>
+    <p style="margin-bottom:24px;font-size:15px;opacity:0.9;line-height:1.7;">
+      If there is immediate danger, call 911 now. If this is a veteran mental health crisis, the Veterans Crisis Line is the fastest path to trained help.
+      <strong>You make the call — this tool does not contact anyone for you.</strong>
+    </p>
+    <div class="crisis-lines">
+      <div class="crisis-line">
+        <div class="org">Veterans Crisis Line</div>
+        <div class="number">988 &nbsp;(press 1)</div>
+        <div class="detail">Call, text, or chat 24/7 — specifically for veterans and their families</div>
+      </div>
+      <div class="crisis-line">
+        <div class="org">Emergency Services</div>
+        <div class="number">911</div>
+        <div class="detail">Immediate physical danger or life-threatening situation</div>
+      </div>
+      <div class="crisis-line">
+        <div class="org">VA Caregiver Support Line</div>
+        <div class="number">1-855-260-3274</div>
+        <div class="detail">Support for caregivers — Mon–Fri 8am–10pm ET, Sat 8am–5pm ET</div>
+      </div>
+    </div>
+    <div class="emergency-note">
+      <strong>About this alert</strong>
+      This alert appeared because of specific language in your entry. It is not a clinical assessment.
+      Only trained professionals can evaluate risk. This tool's job is to make sure you see these resources immediately — not to judge or diagnose.
+      <div id="detected-phrase"></div>
+    </div>
+    <button id="emergency-continue" onclick="dismissEmergency()">I have read this — continue to my entry</button>
+  </div>
+</div>
+
+<!-- ── TAG CORRECTION MODAL ──────────────────────────────────────────────── -->
+<div id="correction-modal">
+  <div class="modal-box">
+    <h3>Correct extracted tags</h3>
+    <p>If the AI misread something, fix it here. Your correction is saved alongside the original.</p>
+    <div id="correction-rows"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeCorrectionModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCorrection()">Save corrections</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let lastEntryId   = null;
+let lastTags      = {};
+let historyOffset = 0;
+let recognition   = null;
+let isRecording   = false;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadCheckin();
+  loadAlertBadge();
+  initVoice();
+  document.getElementById('note-input').addEventListener('input', updateCharCount);
+});
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  const navBtns = document.querySelectorAll('nav button');
+  const order   = ['log','history','patterns','summary','alerts'];
+  navBtns[order.indexOf(name)]?.classList.add('active');
+
+  if (name === 'history')  { historyOffset = 0; loadHistory(false); }
+  if (name === 'patterns') loadPatterns();
+  if (name === 'alerts')   loadAlerts();
+}
+
+// ── Check-in greeting ─────────────────────────────────────────────────────────
+async function loadCheckin() {
+  try {
+    const r = await fetch('/api/checkin');
+    const d = await r.json();
+    document.getElementById('checkin-greeting').textContent = d.greeting;
+    if (d.context) {
+      document.getElementById('checkin-context').textContent =
+        `Based on ${d.context.count} entries in the last ${d.context.days} days`;
+    }
+  } catch(e) {
+    document.getElementById('checkin-greeting').textContent = 'Welcome back. How are things going today?';
+  }
+}
+
+// ── Character count ───────────────────────────────────────────────────────────
+function updateCharCount() {
+  const n = document.getElementById('note-input').value.length;
+  document.getElementById('char-count').textContent = n + ' characters';
+}
+
+// ── Voice input ───────────────────────────────────────────────────────────────
+function initVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    const btn = document.getElementById('voice-btn');
+    btn.disabled = true;
+    btn.title = 'Voice input requires Chrome or Edge';
+    btn.style.opacity = '0.4';
+    return;
+  }
+  recognition = new SR();
+  recognition.continuous    = true;
+  recognition.interimResults = true;
+  recognition.lang          = 'en-US';
+
+  recognition.onresult = e => {
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    document.getElementById('note-input').value = transcript;
+    updateCharCount();
+  };
+
+  recognition.onerror = () => stopRecording();
+  recognition.onend   = ()  => { if (isRecording) recognition.start(); };
+
+  document.getElementById('voice-btn').addEventListener('click', () => {
+    isRecording ? stopRecording() : startRecording();
+  });
+}
+
+function startRecording() {
+  recognition.start();
+  isRecording = true;
+  document.getElementById('voice-btn').classList.add('recording');
+  document.getElementById('voice-icon').textContent  = '⏹';
+  document.getElementById('voice-label').textContent = 'Stop';
+}
+
+function stopRecording() {
+  recognition.stop();
+  isRecording = false;
+  document.getElementById('voice-btn').classList.remove('recording');
+  document.getElementById('voice-icon').textContent  = '🎙';
+  document.getElementById('voice-label').textContent = 'Speak';
+}
+
+// ── Submit note ───────────────────────────────────────────────────────────────
+async function submitNote() {
+  const note = document.getElementById('note-input').value.trim();
+  if (!note) { alert('Please write something before submitting.'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.innerHTML = '<span class="spinner"></span>Analyzing…';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch('/api/entry', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({note})
+    });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+
+    lastEntryId = d.id;
+    lastTags    = d.extraction.tags;
+
+    if (d.extraction.emergency) {
+      showEmergencyOverlay(d.extraction);
+    }
+
+    renderExtractionResult(d.extraction, d.patterns);
+    loadCheckin();
+    loadAlertBadge();
+
+    document.getElementById('note-input').value = '';
+    updateCharCount();
+
+  } catch(e) {
+    alert('Something went wrong. Please try again.');
+  } finally {
+    btn.innerHTML = 'Log Entry';
+    btn.disabled  = false;
+  }
+}
+
+// ── Render extraction ─────────────────────────────────────────────────────────
+const TAG_ICONS = {
+  sleep:'😴', mood:'💭', appetite:'🍽', medication:'💊',
+  appointments:'📅', social:'👥', physical:'🏥', behavior:'⚡'
+};
+
+function renderExtractionResult(extraction, patterns) {
+  const box = document.getElementById('extraction-result');
+  const noteBox = document.getElementById('result-note-box');
+  const grid    = document.getElementById('tags-grid');
+
+  noteBox.textContent = extraction.note;
+  noteBox.className   = 'result-note ' +
+    (extraction.emergency ? 'danger' :
+     extraction.flags.length ? 'warn' : 'ok');
+
+  grid.innerHTML = '';
+  const tags = extraction.tags;
+
+  if (Object.keys(tags).length === 0) {
+    grid.innerHTML = '<span style="color:var(--muted);font-size:14px;">No specific topics detected. Try adding more detail.</span>';
+  } else {
+    for (const [cat, data] of Object.entries(tags)) {
+      const el = document.createElement('span');
+      el.className = 'tag tag-' + data.sentiment;
+      el.innerHTML = `<span class="tag-icon">${TAG_ICONS[cat] || '•'}</span>${cat.charAt(0).toUpperCase()+cat.slice(1)}: ${data.sentiment}<button class="tag-correct-btn" title="Mark as incorrect" onclick="openCorrectionModal()">✏</button>`;
+      grid.appendChild(el);
+    }
+  }
+
+  const sandboxNote = document.getElementById('extraction-sandbox-note');
+  sandboxNote.textContent = extraction.sandbox
+    ? '[Sandbox] Tags extracted using keyword rules — in production, Claude reads the full entry.'
+    : '';
+
+  box.style.display = 'block';
+}
+
+// ── Emergency overlay ─────────────────────────────────────────────────────────
+function showEmergencyOverlay(extraction) {
+  const phrase = extraction.emergency_phrase || '';
+  document.getElementById('detected-phrase').textContent =
+    phrase ? `Language detected: "${phrase}"` : '';
+  document.getElementById('emergency-overlay').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function dismissEmergency() {
+  document.getElementById('emergency-overlay').style.display = 'none';
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+async function loadHistory(append) {
+  if (!append) historyOffset = 0;
+
+  const r = await fetch(`/api/entries?limit=10&offset=${historyOffset}`);
+  const d = await r.json();
+
+  const list  = document.getElementById('history-list');
+  const count = document.getElementById('history-count');
+  count.textContent = `${d.total} total entries`;
+
+  if (!append) list.innerHTML = '';
+
+  if (d.entries.length === 0 && !append) {
+    list.innerHTML = `<div class="empty-state"><p>No entries yet.</p><p>Log your first entry on the <strong>Log Today</strong> tab.</p></div>`;
+    document.getElementById('history-load-more').style.display = 'none';
+    return;
+  }
+
+  d.entries.forEach(entry => {
+    const tags    = entry.corrected_tags || entry.tags;
+    const concerns = Object.values(tags).filter(t => t.sentiment === 'concerning').length;
+    const positives = Object.values(tags).filter(t => t.sentiment === 'positive').length;
+
+    let borderClass = '';
+    if (entry.is_emergency)    borderClass = 'emergency';
+    else if (concerns > 0)     borderClass = 'has-concern';
+    else if (positives > 0 && concerns === 0) borderClass = 'all-positive';
+
+    const tagHtml = Object.entries(tags).map(([cat, data]) =>
+      `<span class="tag tag-${data.sentiment}" style="font-size:12px;padding:4px 10px;">${TAG_ICONS[cat]||'•'} ${cat}</span>`
+    ).join('');
+
+    const card = document.createElement('div');
+    card.className = `entry-card ${borderClass}`;
+    card.innerHTML = `
+      <div class="entry-meta">
+        <span>${formatDate(entry.created_at)}</span>
+        ${entry.is_emergency ? '<span class="emerg-flag">ALERT LOGGED</span>' : ''}
+        ${entry.corrected_tags ? '<span style="color:var(--blue);font-size:11px;font-weight:600;">Corrected</span>' : ''}
+      </div>
+      <div class="entry-preview">${escHtml(entry.raw_note.slice(0, 160))}${entry.raw_note.length > 160 ? '…' : ''}</div>
+      <div class="entry-full">${escHtml(entry.raw_note)}</div>
+      <div class="entry-tags">${tagHtml}</div>`;
+
+    card.querySelector('.entry-preview').addEventListener('click', () => {
+      const full    = card.querySelector('.entry-full');
+      const preview = card.querySelector('.entry-preview');
+      const isOpen  = full.style.display === 'block';
+      full.style.display    = isOpen ? 'none' : 'block';
+      preview.style.display = isOpen ? 'block' : 'none';
+    });
+
+    list.appendChild(card);
+  });
+
+  historyOffset += d.entries.length;
+  const loadMore = document.getElementById('history-load-more');
+  loadMore.style.display = historyOffset < d.total ? 'block' : 'none';
+}
+
+// ── Patterns ──────────────────────────────────────────────────────────────────
+async function loadPatterns() {
+  const r = await fetch('/api/patterns?days=7&threshold=3');
+  const d = await r.json();
+  const list = document.getElementById('patterns-list');
+  list.innerHTML = '';
+
+  if (d.patterns.length === 0) {
+    list.innerHTML = '<div class="no-patterns">No recurring patterns flagged in the last 7 days.</div>';
+    return;
+  }
+
+  d.patterns.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'pattern-card';
+    el.innerHTML = `
+      <div class="pattern-icon">${TAG_ICONS[p.category] || '⚠'}</div>
+      <div class="pattern-body">
+        <h3>${p.label}</h3>
+        <p>${p.message}</p>
+        <p style="font-size:13px;color:var(--muted);margin-top:6px;">Consider mentioning this at the next clinical visit or calling the VA Caregiver Support Line: <strong>1-855-260-3274</strong></p>
+      </div>
+      <div class="pattern-count">${p.count}</div>`;
+    list.appendChild(el);
+  });
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+async function generateSummary() {
+  const days = document.getElementById('days-select').value;
+  const out  = document.getElementById('summary-output');
+  const meta = document.getElementById('summary-meta');
+  out.textContent = 'Generating…';
+  out.style.display = 'block';
+
+  const r = await fetch('/api/summary', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({days: parseInt(days)})
+  });
+  const d = await r.json();
+  out.textContent = d.summary;
+  if (d.entries_reviewed) {
+    meta.textContent = `${d.entries_reviewed} entries reviewed · ${d.date_range}`;
+    meta.style.display = 'block';
+  }
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+async function loadAlerts() {
+  const r = await fetch('/api/alerts');
+  const d = await r.json();
+  const list = document.getElementById('alerts-list');
+  list.innerHTML = '';
+
+  if (d.alerts.length === 0) {
+    list.innerHTML = '<div class="empty-state"><p>No alerts logged yet.</p><p>Emergency language or repeating patterns will appear here.</p></div>';
+    return;
+  }
+
+  d.alerts.forEach(a => {
+    const el = document.createElement('div');
+    el.className = `alert-card ${a.alert_type}`;
+    el.innerHTML = `
+      <div>
+        <span class="alert-type-badge badge-${a.alert_type}">${a.alert_type.toUpperCase()}</span>
+      </div>
+      <div class="alert-body">
+        <p>${escHtml(a.alert_message)}</p>
+        <div class="alert-meta">
+          Logged ${formatDate(a.created_at)}
+          ${a.entry_date ? ` · Entry from ${a.entry_date.slice(0,10)}` : ''}
+        </div>
+        <div class="lock-explain">🔒 Locked · Deletion requires multi-party agreement</div>
+      </div>`;
+    list.appendChild(el);
+  });
+}
+
+async function loadAlertBadge() {
+  try {
+    const r = await fetch('/api/alerts');
+    const d = await r.json();
+    const badge = document.getElementById('alert-badge');
+    const tab   = document.getElementById('alerts-tab');
+    if (d.total > 0) {
+      badge.textContent = d.total;
+      badge.style.display = 'inline-block';
+      tab.innerHTML = `Alerts <span class="badge">${d.total}</span>`;
+    }
+  } catch(e) {}
+}
+
+// ── Tag correction ────────────────────────────────────────────────────────────
+function openCorrectionModal() {
+  if (!lastEntryId) return;
+  const rows = document.getElementById('correction-rows');
+  rows.innerHTML = '';
+  const sentiments = ['concerning','positive','noted','remove'];
+
+  for (const [cat, data] of Object.entries(lastTags)) {
+    const row = document.createElement('div');
+    row.className = 'correction-row';
+    const opts = sentiments.map(s =>
+      `<option value="${s}" ${data.sentiment===s?'selected':''}>${s}</option>`
+    ).join('');
+    row.innerHTML = `
+      <span class="correction-label">${TAG_ICONS[cat]||'•'} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</span>
+      <select class="correction-select" data-cat="${cat}">${opts}</select>`;
+    rows.appendChild(row);
+  }
+
+  document.getElementById('correction-modal').classList.add('open');
+}
+
+function closeCorrectionModal() {
+  document.getElementById('correction-modal').classList.remove('open');
+}
+
+async function saveCorrection() {
+  const selects = document.querySelectorAll('.correction-select');
+  const corrected = {};
+  selects.forEach(sel => {
+    if (sel.value !== 'remove') {
+      corrected[sel.dataset.cat] = { ...lastTags[sel.dataset.cat], sentiment: sel.value };
+    }
+  });
+  await fetch(`/api/entry/${lastEntryId}/correct`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({tags: corrected})
+  });
+  closeCorrectionModal();
+  alert('Correction saved. Your version is recorded alongside the original AI extraction.');
+}
+
+// ── Seed data ─────────────────────────────────────────────────────────────────
+async function seedData() {
+  const btn = event.target;
+  btn.textContent = 'Loading…';
+  btn.disabled = true;
+  const r = await fetch('/api/seed', {method:'POST'});
+  const d = await r.json();
+  btn.textContent = d.message || 'Done';
+  loadCheckin();
+  loadAlertBadge();
+  setTimeout(() => { btn.textContent = 'Load sample data (14 days)'; btn.disabled = false; }, 2000);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatDate(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  return isNaN(d) ? str : d.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+}
+
+function escHtml(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
