@@ -1331,6 +1331,7 @@ async function generateSummary() {
   if (!d.patient) { out.innerHTML = '<p style="padding:20px;color:var(--muted);">No entries found for this period.</p>'; return; }
 
   const p = d.patient;
+  p.name = p.name.replace(/\b\w/g, c => c.toUpperCase());
   const period = d.period;
 
   let html = `

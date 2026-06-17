@@ -1222,9 +1222,10 @@ def seed_data():
         )
         entry_id = cur.lastrowid
         if extraction["emergency"]:
+            etype = extraction.get("emergency_type") or "emergency"
             conn.execute(
-                "INSERT INTO alerts (created_at, entry_id, alert_type, alert_message) VALUES (?, ?, 'emergency', ?)",
-                (created_at, entry_id, f"Emergency language: \"{extraction['emergency_phrase']}\"")
+                "INSERT INTO alerts (created_at, entry_id, alert_type, alert_message) VALUES (?, ?, ?, ?)",
+                (created_at, entry_id, etype, f"Emergency language detected: \"{extraction['emergency_phrase']}\"")
             )
         inserted += 1
 
