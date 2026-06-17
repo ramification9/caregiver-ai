@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CareLog — Veteran Caregiver Log</title>
+<title>CareLog — Caregiver Observation Log</title>
 <style>
 :root {
   --navy:    #1B4F72;
@@ -341,7 +341,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     {% if sandbox %}
     <div style="text-align:center;margin-top:24px;">
       <button class="btn btn-secondary" onclick="seedData()">Load sample data (14 days)</button>
-      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Loads realistic veteran caregiver entries so you can explore patterns, summary, and alerts.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Loads realistic sample entries so you can explore patterns, summary, and alerts.</p>
     </div>
     {% endif %}
 
@@ -1101,7 +1101,7 @@ const MENTAL_STEPS = [
   ["If they are not being violent, stay close.", "Do not leave them alone. Your presence matters."],
   ["Keep them talking.", "About anything. Your voice matters more than your words right now."],
   ["Remove access to means", "if it is safe to do so — medications, weapons, sharp objects."],
-  ["Do not argue or challenge", "what they said. Listen without judgment. Call 911 or the Veterans Crisis Line."]
+  ["Do not argue or challenge", "what they said. Listen without judgment. Call 911 or a crisis line if needed."]
 ];
 
 const PHYSICAL_STEPS = [
@@ -1144,7 +1144,7 @@ function showEmergencyOverlay(extraction) {
       ? '<strong>Leave the room immediately if it is safe to do so.</strong> Call 911 and tell them you have been attacked. Do not return alone. This entry has been permanently logged.'
     : isPhysical
       ? 'Do <strong>not</strong> move them. Stay on the line with 911. You make the call — this tool does not contact anyone for you.'
-      : 'If there is immediate danger, call 911 now. If this is a veteran mental health crisis, the Veterans Crisis Line is the fastest path to trained help. <strong>You make the call — this tool does not contact anyone for you.</strong>';
+      : `If there is immediate danger, call 911 now. ${(currentPatient && currentPatient.is_veteran) ? 'The Veterans Crisis Line (988, press 1) is the fastest path to trained help for veterans.' : 'The 988 Suicide & Crisis Lifeline is available 24/7 — call or text 988.'} <strong>You make the call — this tool does not contact anyone for you.</strong>`;
 
   document.getElementById('crisis-lines-dynamic').innerHTML =
     isThirdParty || isCaregiverSafety || isPhysical
@@ -1294,7 +1294,7 @@ async function loadPatterns() {
       <div class="pattern-body">
         <h3>${p.label}</h3>
         <p>${p.message}</p>
-        <p style="font-size:13px;color:var(--muted);margin-top:6px;">Consider mentioning this at the next clinical visit or calling the VA Caregiver Support Line: <strong>1-855-260-3274</strong></p>
+        <p style="font-size:13px;color:var(--muted);margin-top:6px;">Consider mentioning this at the next clinical visit or calling ${(currentPatient && currentPatient.is_veteran) ? 'the VA Caregiver Support Line: <strong>1-855-260-3274</strong>' : 'a caregiver support line: <strong>1-855-227-3640</strong> (ARCH National Respite Network)'}</p>
       </div>
       <div class="pattern-count">${p.count}</div>`;
     list.appendChild(el);
