@@ -130,9 +130,13 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .alert-card.pattern { border-left: 4px solid var(--amber); }
 .alert-card.incident { border-left: 4px solid #6C3483; }
 .alert-type-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 4px; white-space: nowrap; }
-.badge-emergency { background: var(--concern-bg); color: var(--concern-text); }
-.badge-pattern { background: #FEF9E7; color: var(--amber); }
-.badge-incident { background: #F4ECF7; color: #6C3483; }
+.badge-emergency  { background: var(--concern-bg); color: var(--concern-text); }
+.badge-mental     { background: #FDEDEC; color: #922B21; }
+.badge-physical   { background: #FEF5E7; color: #935116; }
+.badge-caregiver_safety { background: #FDEDEC; color: #922B21; }
+.badge-third_party { background: #F9EBEA; color: #78281F; }
+.badge-pattern    { background: #FEF9E7; color: var(--amber); }
+.badge-incident   { background: #F4ECF7; color: #6C3483; }
 .alert-body { flex: 1; }
 .alert-body p { font-size: 14px; margin-bottom: 4px; }
 .alert-body .alert-meta { font-size: 12px; color: var(--muted); }
@@ -1262,7 +1266,16 @@ async function loadAlerts() {
   d.alerts.forEach(a => {
     const el = document.createElement('div');
     el.className = `alert-card ${a.alert_type}`;
-    const badgeLabel = a.alert_type === 'incident' ? 'INCIDENT' : a.alert_type.toUpperCase();
+    const BADGE_LABELS = {
+      mental:          'MENTAL HEALTH CRISIS',
+      physical:        'MEDICAL EMERGENCY',
+      caregiver_safety:'CAREGIVER SAFETY',
+      third_party:     'VIOLENCE — THIRD PARTY',
+      emergency:       'EMERGENCY',
+      incident:        'INCIDENT',
+      pattern:         'PATTERN'
+    };
+    const badgeLabel = BADGE_LABELS[a.alert_type] || a.alert_type.toUpperCase();
     el.innerHTML = `
       <div>
         <span class="alert-type-badge badge-${a.alert_type}">${badgeLabel}</span>

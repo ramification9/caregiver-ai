@@ -866,9 +866,10 @@ def save_entry():
     entry_id = cur.lastrowid
 
     if extraction["emergency"]:
+        etype = extraction.get("emergency_type") or "emergency"
         conn.execute(
-            "INSERT INTO alerts (entry_id, alert_type, alert_message) VALUES (?, 'emergency', ?)",
-            (entry_id, f"Emergency language detected: \"{extraction['emergency_phrase']}\"")
+            "INSERT INTO alerts (entry_id, alert_type, alert_message) VALUES (?, ?, ?)",
+            (entry_id, etype, f"Emergency language detected: \"{extraction['emergency_phrase']}\"")
         )
 
     if extraction.get("self_report"):
