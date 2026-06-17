@@ -149,14 +149,20 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .afc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
 .afc-count { font-size:22px; font-weight:800; margin-bottom:2px; }
 
-/* Hospital color coding — red = immediate, amber = urgent, purple = notable, navy = all */
-.afc-all            { background:#1B2A4A; color:white; }
-.afc-mental         { background:#C0392B; color:white; }
-.afc-physical       { background:#E74C3C; color:white; }
-.afc-caregiver      { background:#E67E22; color:white; }
-.afc-third_party    { background:#7B241C; color:white; }
-.afc-pattern        { background:#F39C12; color:white; }
-.afc-incident       { background:#6C3483; color:white; }
+/* Hospital triage color logic:
+   Blue   = overview / all
+   Purple = mental / behavioral
+   Red    = physical / medical danger
+   Green  = safety / protection
+   Orange = aggression / violence toward others
+   Gold   = trends / patterns                    */
+.afc-all         { background:#1565C0; color:white; }
+.afc-mental      { background:#6A1B9A; color:white; }
+.afc-physical    { background:#C62828; color:white; }
+.afc-caregiver   { background:#2E7D32; color:white; }
+.afc-third_party { background:#E65100; color:white; }
+.afc-pattern     { background:#F9A825; color:#1a1a1a; }
+.afc-incident    { background:#6A1B9A; color:white; }
 .alert-body { flex: 1; }
 .alert-body p { font-size: 14px; margin-bottom: 4px; }
 .alert-body .alert-meta { font-size: 12px; color: var(--muted); }
