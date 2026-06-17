@@ -1106,25 +1106,35 @@ def topic_suggestions():
 @app.route("/api/alerts", methods=["GET"])
 def get_alerts():
     date_filter = request.args.get("date", "").strip()
+    type_filter = request.args.get("type", "").strip()
     conn = get_db()
+
+    where_clauses = []
+    params = []
     if date_filter:
-        rows = conn.execute(
-            """SELECT a.id, a.created_at, a.alert_type, a.alert_message,
-                      a.deletion_status, a.entry_id, e.created_at as entry_date
-               FROM alerts a LEFT JOIN entries e ON a.entry_id = e.id
-               WHERE a.created_at LIKE ?
-               ORDER BY a.created_at DESC""",
-            (date_filter + "%",)
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            """SELECT a.id, a.created_at, a.alert_type, a.alert_message,
-                      a.deletion_status, a.entry_id, e.created_at as entry_date
-               FROM alerts a LEFT JOIN entries e ON a.entry_id = e.id
-               ORDER BY a.created_at DESC"""
-        ).fetchall()
-    count = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+        where_clauses.append("a.created_at LIKE ?")
+        params.append(date_filter + "%")
+    if type_filter:
+        where_clauses.append("a.alert_type = ?")
+        params.append(type_filter)
+    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+    rows = conn.execute(
+        f"""SELECT a.id, a.created_at, a.alert_type, a.alert_message,
+                  a.deletion_status, a.entry_id, e.created_at as entry_date
+           FROM alerts a LEFT JOIN entries e ON a.entry_id = e.id
+           {where_sql}
+           ORDER BY a.created_at DESC""",
+        params
+    ).fetchall()
+
+    total = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+    count_rows = conn.execute(
+        "SELECT alert_type, COUNT(*) as n FROM alerts GROUP BY alert_type"
+    ).fetchall()
+    counts = {r["alert_type"]: r["n"] for r in count_rows}
     conn.close()
+
     return jsonify({
         "alerts": [{
             "id": r["id"], "created_at": r["created_at"],
@@ -1132,7 +1142,8 @@ def get_alerts():
             "deletion_status": r["deletion_status"],
             "entry_id": r["entry_id"], "entry_date": r["entry_date"]
         } for r in rows],
-        "total": count
+        "total": total,
+        "counts": counts
     })
 
 @app.route("/api/alerts/<int:alert_id>/delete-request", methods=["POST"])
