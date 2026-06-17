@@ -323,39 +323,15 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 <!-- ── EMERGENCY OVERLAY ──────────────────────────────────────────────────── -->
 <div id="emergency-overlay">
   <div class="emergency-inner">
-    <p class="emergency-header">⚠ Urgent — Stop and Read This</p>
-    <h2 class="emergency-title">Your entry contains language that may signal a crisis.</h2>
-    <p style="margin-bottom:24px;font-size:15px;opacity:0.9;line-height:1.7;">
-      If there is immediate danger, call 911 now. If this is a veteran mental health crisis, the Veterans Crisis Line is the fastest path to trained help.
-      <strong>You make the call — this tool does not contact anyone for you.</strong>
-    </p>
+    <p class="emergency-header" id="emergency-header-label">⚠ Urgent — Stop and Read This</p>
+    <h2 class="emergency-title" id="emergency-title-text"></h2>
+    <p style="margin-bottom:24px;font-size:15px;opacity:0.9;line-height:1.7;" id="emergency-subtitle"></p>
     <div class="crisis-lines" id="crisis-lines-dynamic"></div>
     <!-- WHILE YOU WAIT — PENDING CLINICAL REVIEW -->
     <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:20px;margin-bottom:24px;border:2px dashed rgba(255,255,255,0.3);">
       <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:rgba(255,200,0,0.25);color:#FFE066;padding:4px 10px;border-radius:4px;display:inline-block;margin-bottom:14px;">⚠ Placeholder — Pending Clinical Review</div>
       <p style="font-size:16px;font-weight:700;margin-bottom:14px;">While you wait for help:</p>
-      <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
-        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
-          <span style="font-size:20px;flex-shrink:0;">1</span>
-          <span><strong>Stay in the room.</strong> Do not leave them alone for any reason.</span>
-        </li>
-        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
-          <span style="font-size:20px;flex-shrink:0;">2</span>
-          <span><strong>Keep them talking.</strong> About anything. Your voice matters more than your words right now.</span>
-        </li>
-        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
-          <span style="font-size:20px;flex-shrink:0;">3</span>
-          <span><strong>Remove access to means</strong> if it is safe to do so — medications, weapons, sharp objects.</span>
-        </li>
-        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
-          <span style="font-size:20px;flex-shrink:0;">4</span>
-          <span><strong>Stay on the line with 911.</strong> Do not hang up until they tell you to.</span>
-        </li>
-        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
-          <span style="font-size:20px;flex-shrink:0;">5</span>
-          <span><strong>Do not argue or challenge</strong> what they said. Listen without judgment.</span>
-        </li>
-      </ul>
+      <ul id="while-you-wait-steps" style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;"></ul>
       <p style="font-size:12px;opacity:0.6;margin-top:16px;font-style:italic;">This guidance is general and has not been reviewed by a licensed crisis professional. Final language requires clinical sign-off before public release.</p>
     </div>
 
@@ -524,24 +500,54 @@ function initVoice() {
     return;
   }
   recognition = new SR();
-  recognition.continuous    = true;
+  recognition.continuous     = true;
   recognition.interimResults = true;
-  recognition.lang          = 'en-US';
+  recognition.lang           = 'en-US';
+
+  let committed = '';   // text that has been finalized
+  let interim   = '';   // text still being spoken
 
   recognition.onresult = e => {
-    let transcript = '';
+    interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      transcript += e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        const chunk = e.results[i][0].transcript;
+        // Voice command — say "log it", "log entry", "submit", "save it", or "done" to submit
+        if (/\b(log\s*it|log\s*entry|submit|save\s*it|done|send\s*it)\b/i.test(chunk)) {
+          stopRecording();
+          submitNote();
+          return;
+        }
+        committed += chunk + ' ';
+      } else {
+        interim += e.results[i][0].transcript;
+      }
     }
-    document.getElementById('note-input').value = transcript;
+    document.getElementById('note-input').value = committed + interim;
     updateCharCount();
   };
 
-  recognition.onerror = () => stopRecording();
-  recognition.onend   = ()  => { if (isRecording) recognition.start(); };
+  // Auto-restart on pause so text never disappears
+  recognition.onend = () => {
+    if (isRecording) {
+      try { recognition.start(); } catch(e) {}
+    }
+  };
+
+  recognition.onerror = e => {
+    if (e.error === 'no-speech') return; // silence — just restart
+    stopRecording();
+  };
 
   document.getElementById('voice-btn').addEventListener('click', () => {
-    isRecording ? stopRecording() : startRecording();
+    if (isRecording) {
+      stopRecording();
+    } else {
+      committed = '';
+      interim   = '';
+      document.getElementById('note-input').value = '';
+      startRecording();
+    }
   });
 }
 
@@ -554,8 +560,8 @@ function startRecording() {
 }
 
 function stopRecording() {
-  recognition.stop();
   isRecording = false;
+  try { recognition.stop(); } catch(e) {}
   document.getElementById('voice-btn').classList.remove('recording');
   document.getElementById('voice-icon').textContent  = '🎙';
   document.getElementById('voice-label').textContent = 'Speak';
@@ -640,16 +646,64 @@ function renderExtractionResult(extraction, patterns) {
 }
 
 // ── Emergency overlay ─────────────────────────────────────────────────────────
+const MENTAL_STEPS = [
+  ["Stay in the room.", "Do not leave them alone for any reason."],
+  ["Keep them talking.", "About anything. Your voice matters more than your words right now."],
+  ["Remove access to means", "if it is safe to do so — medications, weapons, sharp objects."],
+  ["Stay on the line with 911.", "Do not hang up until they tell you to."],
+  ["Do not argue or challenge", "what they said. Listen without judgment."]
+];
+
+const PHYSICAL_STEPS = [
+  ["Do not move them.", "Moving someone with a possible spinal injury can cause permanent damage. Stay with them where they are."],
+  ["Stay on the line with 911.", "Do not hang up. They will guide you through exactly what to do next."],
+  ["Keep them calm and still.", "Talk to them. Let them know help is on the way. Your presence matters."],
+  ["Do not give food or water.", "Even if they ask. Their body may need surgery."],
+  ["Watch their breathing.", "If it changes, tell 911 immediately. Do not attempt to move them to help breathing unless 911 directs you to."]
+];
+
 function showEmergencyOverlay(extraction) {
   const phrase = extraction.emergency_phrase || '';
+  const type   = extraction.emergency_type || 'mental';
+  const isPhysical = type === 'physical';
+  const isVeteran  = currentPatient && currentPatient.is_veteran;
+
   document.getElementById('detected-phrase').textContent =
     phrase ? `Language detected: "${phrase}"` : '';
-  document.getElementById('crisis-lines-dynamic').innerHTML =
-    currentPatient && currentPatient.is_veteran
+
+  document.getElementById('emergency-title-text').textContent = isPhysical
+    ? 'This looks like a physical emergency. Call 911 now.'
+    : 'Your entry contains language that may signal a crisis.';
+
+  document.getElementById('emergency-subtitle').innerHTML = isPhysical
+    ? 'Do <strong>not</strong> move them. Stay on the line with 911. You make the call — this tool does not contact anyone for you.'
+    : 'If there is immediate danger, call 911 now. If this is a veteran mental health crisis, the Veterans Crisis Line is the fastest path to trained help. <strong>You make the call — this tool does not contact anyone for you.</strong>';
+
+  document.getElementById('crisis-lines-dynamic').innerHTML = isPhysical
+    ? physicalCrisisLines(currentPatient)
+    : isVeteran
       ? veteranCrisisLines(currentPatient)
       : civilianCrisisLines(currentPatient);
+
+  const steps = isPhysical ? PHYSICAL_STEPS : MENTAL_STEPS;
+  document.getElementById('while-you-wait-steps').innerHTML = steps.map((s, i) =>
+    `<li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
+      <span style="font-size:20px;flex-shrink:0;">${i+1}</span>
+      <span><strong>${s[0]}</strong> ${s[1]}</span>
+    </li>`
+  ).join('');
+
   document.getElementById('emergency-overlay').style.display = 'block';
   window.scrollTo(0, 0);
+}
+
+function physicalCrisisLines(patient) {
+  const local = patient && patient.local_crisis_number
+    ? crisisLine('Local Crisis Line', patient.local_crisis_number, 'Your saved local crisis resource')
+    : '';
+  return crisisLine('Emergency Services', '911', 'Call now — immediate physical emergency')
+    + crisisLine('Poison Control', '1-800-222-1222', 'If overdose or ingestion is involved')
+    + local;
 }
 
 function crisisLine(org, number, detail) {

@@ -62,14 +62,43 @@ def init_db():
 
 # ── Mock AI Extraction (swap this block for Claude API in production) ──────────
 
-EMERGENCY_PHRASES = [
+MENTAL_EMERGENCY_PHRASES = [
     "wants to die", "want to die", "wants to end it", "end it all",
     "kill himself", "kill herself", "killing himself", "killing herself",
     "hurt himself", "hurt herself", "hurting himself", "hurting herself",
     "suicidal", "suicide", "taking his life", "taking her life",
     "no reason to live", "doesn't want to live", "doesn't want to be here",
-    "not worth living", "better off dead", "better off without me",
-    "crisis", "overdose", "self-harm", "self harm"
+    "not worth living", "better off dead", "better off without",
+    "self-harm", "self harm"
+]
+
+PHYSICAL_EMERGENCY_PHRASES = [
+    # falls
+    "fell down the stairs", "fell down stairs", "fell down and",
+    "fell and can't get up", "fell and cant get up",
+    "can't get up", "cant get up", "fell hard", "took a fall",
+    # not responding
+    "not moving", "isn't moving", "wont move", "won't move",
+    "not responding", "isn't responding", "no response",
+    "not waking up", "won't wake up", "wont wake up",
+    "unconscious", "unresponsive", "passed out", "blacked out",
+    # breathing
+    "not breathing", "stopped breathing", "isn't breathing", "can't breathe",
+    # injury
+    "spinal", "possible spinal", "head injury",
+    "hit his head", "hit her head", "bleeding heavily",
+    "heavy bleeding", "won't stop bleeding", "wont stop bleeding",
+    # cardiac/medical
+    "chest pain", "heart attack", "stroke", "seizure", "having a seizure",
+    # ems
+    "waiting for ems", "waiting for ambulance", "called 911", "called ems",
+    "ems is coming", "ambulance is coming",
+    # can't move
+    "can't move him", "can't move her", "cant move him", "cant move her",
+    "don't move him", "don't move her", "dont move him", "dont move her",
+    "afraid to move", "scared to move",
+    # overdose
+    "overdose", "drug overdose"
 ]
 
 EXTRACTION_RULES = {
@@ -246,11 +275,22 @@ def mock_extract(note_text):
     # Emergency check — always runs first, hard stop
     emergency = False
     emergency_phrase = None
-    for phrase in EMERGENCY_PHRASES:
+    emergency_type = None
+
+    for phrase in PHYSICAL_EMERGENCY_PHRASES:
         if phrase in text_lower:
             emergency = True
             emergency_phrase = phrase
+            emergency_type = "physical"
             break
+
+    if not emergency:
+        for phrase in MENTAL_EMERGENCY_PHRASES:
+            if phrase in text_lower:
+                emergency = True
+                emergency_phrase = phrase
+                emergency_type = "mental"
+                break
 
     # Tag extraction
     tags = {}
@@ -302,6 +342,7 @@ def mock_extract(note_text):
         "tags": tags,
         "flags": flags,
         "emergency": emergency,
+        "emergency_type": emergency_type,
         "emergency_phrase": emergency_phrase,
         "note": note,
         "sandbox": True
