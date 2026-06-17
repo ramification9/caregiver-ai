@@ -40,6 +40,14 @@ def init_db():
             deletion_status     TEXT DEFAULT 'locked'
         );
 
+        CREATE TABLE IF NOT EXISTS patients (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at          TEXT DEFAULT (datetime('now','localtime')),
+            name                TEXT NOT NULL,
+            is_veteran          INTEGER DEFAULT 0,
+            local_crisis_number TEXT DEFAULT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS deletion_audit (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at      TEXT DEFAULT (datetime('now','localtime')),
@@ -67,28 +75,52 @@ EMERGENCY_PHRASES = [
 EXTRACTION_RULES = {
     "sleep": {
         "concerning": [
-            "didn't sleep", "couldn't sleep", "no sleep", "up all night", "awake all night",
-            "insomnia", "restless night", "nightmare", "nightmares", "bad night",
-            "poor sleep", "barely slept", "not sleeping", "can't sleep", "woke up screaming",
-            "woke up yelling", "thrashing"
+            # caregiver reporting on veteran
+            "didn't sleep", "couldn't sleep", "didn't get much sleep", "barely slept",
+            "up all night", "was up all night", "awake all night", "up most of the night",
+            "up at 2", "up at 3", "up at 4", "up at 1", "woke up at 2", "woke up at 3",
+            "woke up at 4", "woke up at 1", "woke up screaming", "woke up yelling",
+            "restless night", "bad night", "nightmare", "nightmares", "thrashing",
+            "insomnia", "poor sleep", "not sleeping", "slept maybe", "slept only",
+            "kept waking", "couldn't get him to sleep", "couldn't get her to sleep",
+            "was up most", "no sleep"
         ],
         "positive": [
-            "slept well", "good sleep", "slept through", "good night", "rested", "full night"
+            "slept well", "slept through", "slept through the night", "good sleep",
+            "good night", "rested", "full night", "got a full night", "stayed asleep",
+            "slept about", "slept around"
         ],
         "neutral": [
-            "sleep", "slept", "nap", "napping", "tired", "exhausted", "fatigue", "drowsy", "awake"
+            "sleep", "slept", "nap", "napping", "tired", "exhausted", "fatigue", "drowsy"
         ]
     },
     "mood": {
         "concerning": [
-            "on edge", "anxious", "anxiety", "agitated", "angry", "irritable", "upset",
-            "frustrated", "withdrawn", "paranoid", "depressed", "depression", "low mood",
-            "not himself", "not herself", "distant", "aggressive", "combative",
-            "crying", "breaking down", "overwhelmed", "hypervigilant", "jumpy", "startled"
+            # third person — caregiver describing veteran's mood
+            "on edge", "seemed on edge", "was on edge",
+            "anxious", "anxiety", "agitated", "seemed agitated", "was agitated",
+            "angry", "got angry", "was angry", "irritable", "seemed irritable",
+            "upset", "seemed upset", "was upset", "frustrated",
+            "withdrawn", "very withdrawn", "seemed withdrawn",
+            "paranoid", "seemed paranoid", "was paranoid",
+            "depressed", "depression", "seemed depressed", "low mood",
+            "not himself", "not herself", "not his usual self", "not her usual self",
+            "distant", "seemed distant", "was distant",
+            "aggressive", "got aggressive", "combative", "got combative",
+            "was crying", "started crying", "cried",
+            "breaking down", "had a breakdown",
+            "overwhelmed", "seemed overwhelmed",
+            "hypervigilant", "jumpy", "startled easily",
+            "snapped at me", "snapped at", "lashed out", "shut down",
+            "couldn't reach him", "couldn't reach her",
+            "wouldn't respond", "wouldn't engage", "shut himself off", "shut herself off"
         ],
         "positive": [
-            "calm", "happy", "good mood", "positive", "content", "relaxed", "cheerful",
-            "laughed", "smiling", "upbeat", "in good spirits"
+            "calm", "was calm", "seemed calm", "happy", "seemed happy",
+            "good mood", "in a good mood", "positive", "content", "relaxed",
+            "cheerful", "laughed", "was laughing", "smiling", "upbeat",
+            "in good spirits", "more like himself", "more like herself",
+            "opened up", "engaged well"
         ],
         "neutral": [
             "mood", "emotional", "feelings", "seemed", "appeared"
@@ -96,13 +128,18 @@ EXTRACTION_RULES = {
     },
     "appetite": {
         "concerning": [
-            "skipped meal", "didn't eat", "refused food", "not eating", "no appetite",
-            "barely ate", "wouldn't eat", "refusing to eat", "lost appetite", "skipped dinner",
-            "skipped breakfast", "skipped lunch"
+            "skipped meal", "didn't eat", "refused food", "refused to eat",
+            "not eating", "no appetite", "barely ate", "wouldn't eat",
+            "refusing to eat", "lost appetite", "skipped dinner", "skipped breakfast",
+            "skipped lunch", "didn't finish", "pushed the plate away",
+            "only ate a few bites", "ate very little", "didn't touch his food",
+            "didn't touch her food"
         ],
         "positive": [
-            "ate well", "good appetite", "ate everything", "hungry", "enjoyed meal",
-            "finished plate", "good meal", "ate a full"
+            "ate well", "good appetite", "ate everything", "ate a full",
+            "finished his plate", "finished her plate", "enjoyed his meal",
+            "enjoyed her meal", "good meal", "ate a full breakfast",
+            "ate a full dinner", "ate a full lunch", "had a big meal"
         ],
         "neutral": [
             "ate", "meal", "food", "eating", "breakfast", "lunch", "dinner", "snack"
@@ -110,13 +147,18 @@ EXTRACTION_RULES = {
     },
     "medication": {
         "concerning": [
-            "refused medication", "skipped medication", "forgot medication", "missed dose",
-            "wouldn't take", "spit out", "refused meds", "skipped meds", "not taking his meds",
-            "not taking her meds", "refused his meds", "refused her meds"
+            "refused medication", "refused his medication", "refused her medication",
+            "skipped medication", "forgot medication", "missed his dose", "missed her dose",
+            "missed dose", "wouldn't take his meds", "wouldn't take her meds",
+            "wouldn't take", "spit out", "refused meds", "skipped meds",
+            "not taking his meds", "not taking her meds",
+            "refused his meds", "refused her meds", "fought me on his meds",
+            "fought me on her meds", "had to remind him", "had to remind her"
         ],
         "positive": [
-            "took medication", "took his meds", "took her meds", "medication on time",
-            "no issues with meds", "meds taken", "took all his", "took all her"
+            "took his medication", "took her medication", "took his meds", "took her meds",
+            "medication on time", "no issues with meds", "took all his", "took all her",
+            "no problems with meds", "took them without", "took it without"
         ],
         "neutral": [
             "medication", "meds", "pill", "pills", "prescription", "dose", "refill"
@@ -124,43 +166,63 @@ EXTRACTION_RULES = {
     },
     "appointments": {
         "concerning": [
-            "skipped", "missed", "refused to go", "cancelled", "no show",
-            "didn't make it", "wouldn't go", "refused appointment", "skipped his", "skipped her"
+            "missed his appointment", "missed her appointment", "missed the appointment",
+            "skipped his appointment", "skipped her appointment",
+            "refused to go", "wouldn't go", "cancelled his", "cancelled her",
+            "no show", "didn't make it", "missed his pt", "missed her pt",
+            "skipped pt", "skipped therapy", "missed therapy",
+            "refused his appointment", "refused her appointment"
         ],
         "positive": [
-            "attended", "went to", "made it to", "completed appointment", "kept appointment",
-            "showed up", "went to therapy", "went to the va"
+            "went to his appointment", "went to her appointment",
+            "made it to", "kept his appointment", "kept her appointment",
+            "attended therapy", "went to therapy", "went to the va",
+            "showed up", "completed his session", "completed her session"
         ],
         "neutral": [
-            "appointment", "physical therapy", "pt appointment", "therapy", "doctor", "va ",
-            "clinic", "session", "counseling", "mental health appointment", "check-up"
+            "appointment", "physical therapy", "pt appointment", "therapy",
+            "doctor", "va ", "clinic", "session", "counseling", "check-up"
         ]
     },
     "social": {
         "concerning": [
-            "isolated", "refused to talk", "wouldn't come out", "stayed in room",
-            "avoiding", "pushed away", "no contact", "shut himself", "shut herself",
-            "won't talk", "ignoring everyone", "closed himself", "closed herself off"
+            "isolated himself", "isolated herself", "isolating",
+            "refused to talk", "wouldn't talk to anyone", "wouldn't come out",
+            "stayed in his room", "stayed in her room", "stayed in the room",
+            "avoiding everyone", "pushed me away", "pushed everyone away",
+            "no contact with", "shut himself in", "shut herself in",
+            "ignoring everyone", "wouldn't see anyone", "closed himself off",
+            "closed herself off", "didn't want to be around anyone"
         ],
         "positive": [
-            "talked with", "visited with", "called family", "spent time with", "had visitors",
-            "engaged", "connected", "brightened up", "opened up"
+            "talked with", "visited with", "had a visit", "called family",
+            "spent time with", "had visitors", "engaged with",
+            "connected with", "brightened up", "opened up to",
+            "laughed with", "socialized"
         ],
         "neutral": [
-            "family", "friends", "neighbor", "group", "community", "phone call"
+            "family", "friends", "neighbor", "group", "community", "phone call", "visit"
         ]
     },
     "physical": {
         "concerning": [
             "pain", "fell", "fall", "injury", "hurt himself", "limping", "weak", "dizzy",
             "confused", "disoriented", "trembling", "shaking", "bleeding", "swelling",
-            "chest pain", "difficulty breathing", "can't walk", "can't stand"
+            "chest pain", "difficulty breathing", "can't walk", "can't stand",
+            "throwing up", "threw up", "vomiting", "vomit", "nausea", "nauseous",
+            "sick to my stomach", "soiled", "bathroom accident", "not feeling well",
+            "don't feel ok", "dont feel ok", "doesn't feel ok", "doesnt feel ok",
+            "don't feel good", "dont feel good", "doesn't feel good", "doesnt feel good",
+            "not feeling ok", "not feeling good", "not feeling well",
+            "feel bad", "feeling bad", "feeling terrible", "feeling awful",
+            "under the weather", "running a fever", "fever", "temperature"
         ],
         "positive": [
-            "active", "walked", "exercised", "feeling better physically", "strong today"
+            "active", "walked", "exercised", "feeling better physically", "strong today",
+            "feeling well", "feeling good physically"
         ],
         "neutral": [
-            "physical", "body", "moving", "mobility", "walking", "standing"
+            "physical", "body", "moving", "mobility", "walking", "standing", "health"
         ]
     },
     "behavior": {
@@ -318,28 +380,33 @@ def build_checkin():
     patterns = detect_patterns(days=7, threshold=2)
     conn = get_db()
     has_entries = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+    patient_row = conn.execute("SELECT name FROM patients LIMIT 1").fetchone()
     conn.close()
 
+    name = patient_row["name"] if patient_row else None
+    they = name if name else "he/she"
+
     if not has_entries:
-        return {"greeting": "Welcome. When you're ready, log how today went.", "context": None}
+        greeting = f"Welcome. When you're ready, log how today went{' for ' + name if name else ''}."
+        return {"greeting": greeting, "context": None}
 
     if patterns:
         top = patterns[0]
         greetings = {
-            "sleep": "You've mentioned sleep problems several times this week — how did last night go?",
-            "mood": "You've noted some mood concerns this week. How is he/she doing today?",
-            "medication": "There have been some medication challenges recently. Any updates today?",
-            "appointments": "A few appointments have been missed this week. How's scheduling going?",
-            "appetite": "Appetite has been a concern lately. Did he/she eat well today?",
-            "behavior": "You've flagged some behavior concerns this week. How is today going?",
-            "social": "Social withdrawal has come up a few times this week. Any change today?",
-            "physical": "You've noted some physical symptoms this week. How is he/she feeling today?"
+            "sleep": f"You've mentioned sleep problems several times this week — how did last night go for {they}?",
+            "mood": f"You've noted some mood concerns this week. How is {they} doing today?",
+            "medication": f"There have been some medication challenges recently. Any updates today?",
+            "appointments": f"A few appointments have been missed this week. How is scheduling going?",
+            "appetite": f"Appetite has been a concern lately. Did {they} eat well today?",
+            "behavior": f"You've flagged some behavior concerns this week. How is {they} today?",
+            "social": f"Social withdrawal has come up a few times this week. Any change today?",
+            "physical": f"You've noted some physical symptoms this week. How is {they} feeling today?"
         }
         msg = greetings.get(top["category"],
               f"You've had concerns about {top['label'].lower()} this week. How are things today?")
         return {"greeting": msg, "context": top}
 
-    return {"greeting": "Welcome back. How are things going today?", "context": None}
+    return {"greeting": f"Welcome back. How are things going today{' with ' + name if name else ''}?", "context": None}
 
 # ── Summary Generator ──────────────────────────────────────────────────────────
 
@@ -430,6 +497,45 @@ def mock_generate_summary(days=14):
 @app.route("/")
 def index():
     return render_template("index.html", sandbox=SANDBOX_MODE)
+
+@app.route("/api/patient", methods=["GET"])
+def get_patient():
+    conn = get_db()
+    row = conn.execute("SELECT * FROM patients ORDER BY id LIMIT 1").fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"patient": None})
+    return jsonify({"patient": {
+        "id": row["id"],
+        "name": row["name"],
+        "is_veteran": bool(row["is_veteran"]),
+        "local_crisis_number": row["local_crisis_number"]
+    }})
+
+@app.route("/api/patient", methods=["POST"])
+def save_patient():
+    data = request.get_json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name is required."}), 400
+    is_veteran = 1 if data.get("is_veteran") else 0
+    local_crisis_number = (data.get("local_crisis_number") or "").strip() or None
+
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM patients LIMIT 1").fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE patients SET name=?, is_veteran=?, local_crisis_number=? WHERE id=?",
+            (name, is_veteran, local_crisis_number, existing["id"])
+        )
+    else:
+        conn.execute(
+            "INSERT INTO patients (name, is_veteran, local_crisis_number) VALUES (?,?,?)",
+            (name, is_veteran, local_crisis_number)
+        )
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route("/api/checkin", methods=["GET"])
 def checkin():

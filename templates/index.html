@@ -160,6 +160,24 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .correction-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
 
+/* Patient setup */
+#patient-setup { position:fixed; inset:0; background:var(--navy); z-index:3000; display:none; align-items:center; justify-content:center; padding:24px; }
+#patient-setup.open { display:flex; }
+.setup-box { background:white; border-radius:12px; padding:36px; max-width:480px; width:100%; }
+.setup-box h2 { color:var(--navy); font-size:22px; margin-bottom:8px; }
+.setup-box .setup-intro { color:var(--muted); font-size:14px; margin-bottom:28px; line-height:1.7; }
+.setup-field { margin-bottom:24px; }
+.setup-field label { display:block; font-size:14px; font-weight:600; margin-bottom:8px; color:var(--text); }
+.setup-field input[type="text"] { width:100%; padding:12px 14px; border:2px solid var(--border); border-radius:8px; font-size:16px; font-family:inherit; transition:border-color 0.2s; }
+.setup-field input[type="text"]:focus { outline:none; border-color:var(--blue); }
+.setup-field .optional { font-size:12px; color:var(--muted); font-weight:400; margin-left:6px; }
+.veteran-choice { display:flex; gap:12px; margin-top:4px; }
+.veteran-btn { flex:1; padding:14px; border:2px solid var(--border); border-radius:8px; background:white; font-size:15px; font-weight:600; cursor:pointer; color:var(--text); transition:all 0.2s; text-align:center; }
+.veteran-btn:hover { border-color:var(--navy); }
+.veteran-btn.selected { border-color:var(--navy); background:var(--navy); color:white; }
+#patient-name-display { font-size:13px; opacity:0.8; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+#patient-name-display:hover { opacity:1; }
+
 /* Spinner */
 .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -178,8 +196,11 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 {% endif %}
 
 <header>
-  <h1>CareLog &nbsp;<span>Veteran Caregiver Daily Log</span></h1>
-  <span id="alert-badge">0</span>
+  <h1>CareLog &nbsp;<span>Caregiver Daily Log</span></h1>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <span id="patient-name-display" onclick="openPatientSetup()" title="Edit patient"></span>
+    <span id="alert-badge">0</span>
+  </div>
 </header>
 
 <nav>
@@ -308,23 +329,36 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       If there is immediate danger, call 911 now. If this is a veteran mental health crisis, the Veterans Crisis Line is the fastest path to trained help.
       <strong>You make the call — this tool does not contact anyone for you.</strong>
     </p>
-    <div class="crisis-lines">
-      <div class="crisis-line">
-        <div class="org">Veterans Crisis Line</div>
-        <div class="number">988 &nbsp;(press 1)</div>
-        <div class="detail">Call, text, or chat 24/7 — specifically for veterans and their families</div>
-      </div>
-      <div class="crisis-line">
-        <div class="org">Emergency Services</div>
-        <div class="number">911</div>
-        <div class="detail">Immediate physical danger or life-threatening situation</div>
-      </div>
-      <div class="crisis-line">
-        <div class="org">VA Caregiver Support Line</div>
-        <div class="number">1-855-260-3274</div>
-        <div class="detail">Support for caregivers — Mon–Fri 8am–10pm ET, Sat 8am–5pm ET</div>
-      </div>
+    <div class="crisis-lines" id="crisis-lines-dynamic"></div>
+    <!-- WHILE YOU WAIT — PENDING CLINICAL REVIEW -->
+    <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:20px;margin-bottom:24px;border:2px dashed rgba(255,255,255,0.3);">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:rgba(255,200,0,0.25);color:#FFE066;padding:4px 10px;border-radius:4px;display:inline-block;margin-bottom:14px;">⚠ Placeholder — Pending Clinical Review</div>
+      <p style="font-size:16px;font-weight:700;margin-bottom:14px;">While you wait for help:</p>
+      <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
+        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
+          <span style="font-size:20px;flex-shrink:0;">1</span>
+          <span><strong>Stay in the room.</strong> Do not leave them alone for any reason.</span>
+        </li>
+        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
+          <span style="font-size:20px;flex-shrink:0;">2</span>
+          <span><strong>Keep them talking.</strong> About anything. Your voice matters more than your words right now.</span>
+        </li>
+        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
+          <span style="font-size:20px;flex-shrink:0;">3</span>
+          <span><strong>Remove access to means</strong> if it is safe to do so — medications, weapons, sharp objects.</span>
+        </li>
+        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
+          <span style="font-size:20px;flex-shrink:0;">4</span>
+          <span><strong>Stay on the line with 911.</strong> Do not hang up until they tell you to.</span>
+        </li>
+        <li style="display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.5;">
+          <span style="font-size:20px;flex-shrink:0;">5</span>
+          <span><strong>Do not argue or challenge</strong> what they said. Listen without judgment.</span>
+        </li>
+      </ul>
+      <p style="font-size:12px;opacity:0.6;margin-top:16px;font-style:italic;">This guidance is general and has not been reviewed by a licensed crisis professional. Final language requires clinical sign-off before public release.</p>
     </div>
+
     <div class="emergency-note">
       <strong>About this alert</strong>
       This alert appeared because of specific language in your entry. It is not a clinical assessment.
@@ -332,6 +366,31 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       <div id="detected-phrase"></div>
     </div>
     <button id="emergency-continue" onclick="dismissEmergency()">I have read this — continue to my entry</button>
+  </div>
+</div>
+
+<!-- ── PATIENT SETUP MODAL ────────────────────────────────────────────────── -->
+<div id="patient-setup">
+  <div class="setup-box">
+    <h2>Before we begin</h2>
+    <p class="setup-intro">Tell us about the person you're caring for. This helps CareLog show the right resources and ask the right questions — you only need to do this once.</p>
+    <div class="setup-field">
+      <label for="setup-name">Their first name</label>
+      <input type="text" id="setup-name" placeholder="e.g. Robert" autocomplete="off">
+    </div>
+    <div class="setup-field">
+      <label>Was <span id="setup-name-label">this person</span> ever a member of the U.S. Armed Forces?</label>
+      <div class="veteran-choice">
+        <button class="veteran-btn" id="btn-veteran-yes" onclick="selectVeteran(true)">Yes — they served</button>
+        <button class="veteran-btn selected" id="btn-veteran-no" onclick="selectVeteran(false)">No</button>
+      </div>
+    </div>
+    <div class="setup-field">
+      <label>Local crisis line number <span class="optional">(optional)</span></label>
+      <input type="text" id="setup-local-crisis" placeholder="e.g. 1-844-493-8255" autocomplete="off">
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">If you have a local crisis number, it will appear on your emergency screen. Leave blank to use national defaults.</p>
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;" onclick="savePatient()">Start logging</button>
   </div>
 </div>
 
@@ -355,14 +414,69 @@ let lastTags      = {};
 let historyOffset = 0;
 let recognition   = null;
 let isRecording   = false;
+let currentPatient = null;
+let setupVeteran  = false;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  loadCheckin();
+  loadPatient();
   loadAlertBadge();
   initVoice();
   document.getElementById('note-input').addEventListener('input', updateCharCount);
+  document.getElementById('setup-name').addEventListener('input', () => {
+    const n = document.getElementById('setup-name').value.trim();
+    document.getElementById('setup-name-label').textContent = n || 'this person';
+  });
 });
+
+// ── Patient setup ─────────────────────────────────────────────────────────────
+async function loadPatient() {
+  const r = await fetch('/api/patient');
+  const d = await r.json();
+  if (d.patient) {
+    currentPatient = d.patient;
+    updatePatientUI();
+    loadCheckin();
+  } else {
+    openPatientSetup();
+  }
+}
+
+function openPatientSetup() {
+  document.getElementById('patient-setup').classList.add('open');
+  if (currentPatient) {
+    document.getElementById('setup-name').value = currentPatient.name;
+    document.getElementById('setup-local-crisis').value = currentPatient.local_crisis_number || '';
+    selectVeteran(currentPatient.is_veteran);
+  }
+}
+
+function selectVeteran(val) {
+  setupVeteran = val;
+  document.getElementById('btn-veteran-yes').classList.toggle('selected', val);
+  document.getElementById('btn-veteran-no').classList.toggle('selected', !val);
+}
+
+async function savePatient() {
+  const name = document.getElementById('setup-name').value.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const local = document.getElementById('setup-local-crisis').value.trim();
+  await fetch('/api/patient', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, is_veteran: setupVeteran, local_crisis_number: local || null})
+  });
+  document.getElementById('patient-setup').classList.remove('open');
+  await loadPatient();
+}
+
+function updatePatientUI() {
+  if (!currentPatient) return;
+  const display = document.getElementById('patient-name-display');
+  display.textContent = currentPatient.is_veteran
+    ? `${currentPatient.name} · Veteran`
+    : currentPatient.name;
+}
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function showSection(name) {
@@ -530,8 +644,40 @@ function showEmergencyOverlay(extraction) {
   const phrase = extraction.emergency_phrase || '';
   document.getElementById('detected-phrase').textContent =
     phrase ? `Language detected: "${phrase}"` : '';
+  document.getElementById('crisis-lines-dynamic').innerHTML =
+    currentPatient && currentPatient.is_veteran
+      ? veteranCrisisLines(currentPatient)
+      : civilianCrisisLines(currentPatient);
   document.getElementById('emergency-overlay').style.display = 'block';
   window.scrollTo(0, 0);
+}
+
+function crisisLine(org, number, detail) {
+  return `<div class="crisis-line"><div class="org">${org}</div><div class="number">${number}</div><div class="detail">${detail}</div></div>`;
+}
+
+function veteranCrisisLines(patient) {
+  const local = patient && patient.local_crisis_number
+    ? crisisLine('Local Crisis Line', patient.local_crisis_number, 'Your saved local crisis resource')
+    : '';
+  return crisisLine('Veterans Crisis Line', '988 &nbsp;(press 1)', 'Call, text, or chat 24/7 — specifically for veterans and their families')
+    + crisisLine('Emergency Services', '911', 'Immediate physical danger or life-threatening situation')
+    + crisisLine('VA Caregiver Support Line', '1-855-260-3274', 'Support for caregivers — Mon–Fri 8am–10pm ET, Sat 8am–5pm ET')
+    + local;
+}
+
+function civilianCrisisLines(patient) {
+  const local = patient && patient.local_crisis_number
+    ? crisisLine('Local Crisis Line', patient.local_crisis_number, 'Your saved local crisis resource')
+    : `<div class="crisis-line" style="border:1px dashed rgba(255,255,255,0.3);">
+        <div class="org">Local Crisis Line</div>
+        <div class="number" style="font-size:16px;opacity:0.7;">Not set</div>
+        <div class="detail">Add a local number in patient settings for faster access</div>
+       </div>`;
+  return crisisLine('988 Suicide &amp; Crisis Lifeline', '988', 'Call or text 24/7 — free, confidential crisis support')
+    + crisisLine('Crisis Text Line', 'Text HOME to 741741', 'Free 24/7 text-based crisis support')
+    + crisisLine('Emergency Services', '911', 'Immediate physical danger or life-threatening situation')
+    + local;
 }
 
 function dismissEmergency() {
