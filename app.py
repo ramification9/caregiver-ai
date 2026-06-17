@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify, render_template
 import sqlite3
 import json
+import random
+import urllib.request
+import urllib.parse
 from datetime import datetime, timedelta
 import os
 
@@ -8,7 +11,7 @@ app = Flask(__name__)
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 
-SANDBOX_MODE = True   # set False and implement claude_extract() to go live
+SANDBOX_MODE = True   # set False and implement live_extract() to go live
 DB_PATH = os.path.join(os.path.dirname(__file__), "caregiver.db")
 
 # ── Database ───────────────────────────────────────────────────────────────────
@@ -56,11 +59,112 @@ def init_db():
             reason          TEXT,
             status          TEXT DEFAULT 'denied'
         );
+
+        CREATE TABLE IF NOT EXISTS medications (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at      TEXT DEFAULT (datetime('now','localtime')),
+            name            TEXT NOT NULL,
+            dosage          TEXT DEFAULT NULL,
+            frequency       TEXT DEFAULT NULL,
+            scheduled_time  TEXT DEFAULT NULL,
+            notes           TEXT DEFAULT NULL,
+            is_active       INTEGER DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS med_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at  TEXT DEFAULT (datetime('now','localtime')),
+            entry_id    INTEGER REFERENCES entries(id),
+            med_name    TEXT NOT NULL,
+            status      TEXT NOT NULL,
+            notes       TEXT DEFAULT NULL
+        );
     """)
     conn.commit()
     conn.close()
 
+def migrate_db():
+    """Add columns introduced after initial schema — safe to run on every start."""
+    conn = get_db()
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(entries)").fetchall()]
+    if "custom_tags" not in cols:
+        conn.execute("ALTER TABLE entries ADD COLUMN custom_tags TEXT DEFAULT NULL")
+        conn.commit()
+    conn.close()
+
 # ── Mock AI Extraction (swap this block for Claude API in production) ──────────
+
+CAREGIVER_SAFETY_PHRASES = [
+    "stabbed me", "he stabbed me", "she stabbed me",
+    "shot me", "he shot me", "she shot me",
+    "attacked me", "he attacked me", "she attacked me",
+    "hit me with", "hit me hard", "struck me",
+    "choked me", "he choked me", "she choked me",
+    "came at me with", "came after me with",
+    "threatened me with", "pointed a gun at me", "pointed a knife at me",
+    "has a knife", "has a gun", "pulled a knife", "pulled a gun",
+    "pulled out a gun", "pulled out a knife",
+    "hurt me", "he hurt me", "she hurt me",
+    "threw something at me", "threw him at me",
+    "i am not safe", "i'm not safe", "im not safe",
+    "he is violent", "she is violent", "getting violent with me",
+    "being attacked", "under attack",
+    "slapped me", "he slapped me", "she slapped me",
+    "slapped her wife", "slapped his wife", "slapped her husband",
+    "hit me", "he hit me", "she hit me", "hit her wife", "hit his wife",
+    "punched me", "he punched me", "she punched me",
+    "kicked me", "he kicked me", "she kicked me",
+    "pushed me", "he pushed me", "she pushed me", "shoved me",
+    "grabbed me", "he grabbed me", "she grabbed me",
+    "threw something at me", "swung at me",
+    "is hitting me", "keeps hitting me", "hit me again",
+    "threatening me", "threatened me", "got physical with me"
+]
+
+THIRD_PARTY_VIOLENCE_PHRASES = [
+    # physical assault toward others
+    "hit his wife", "hit her wife", "hit his husband", "hit her husband",
+    "hit his daughter", "hit his son", "hit her daughter", "hit her son",
+    "hit the neighbor", "hit a neighbor",
+    "beat his wife", "beat her wife", "beat his husband", "beat his daughter",
+    "beat his son", "beat her daughter", "beat her son", "beat the neighbor",
+    "punched his wife", "punched her wife", "punched his husband",
+    "punched the neighbor", "punched a neighbor",
+    "choked his wife", "choked her wife", "choked his husband",
+    "choked the neighbor", "choked a neighbor",
+    "shoved his wife", "shoved her wife", "shoved his husband",
+    "attacked his wife", "attacked her wife", "attacked his husband",
+    "attacked the neighbor", "attacked a neighbor",
+    "grabbed his wife", "grabbed her wife", "grabbed his husband",
+    "threw her against", "threw him against", "slammed her", "slammed him",
+    "threatened his wife", "threatened her wife", "threatened his husband",
+    "threatened the neighbor", "threatened a neighbor",
+    # weapons toward others
+    "shot the neighbor", "shot a neighbor", "shot his wife", "shot her wife",
+    "shot his husband", "shot at someone", "shot at the",
+    "stabbed the neighbor", "stabbed a neighbor", "stabbed his wife",
+    "stabbed her wife", "stabbed his husband", "stabbed someone",
+    "stabbed the dog", "shot the dog", "hurt the dog", "kicked the dog",
+    "knife at his wife", "knife at her", "gun at his wife", "gun at her",
+    "pulled a gun on", "pulled a knife on", "pointed a gun at his",
+    "pointed a gun at her", "pointed a knife at his", "pointed a knife at her",
+    # general harm to others
+    "hurt his wife", "hurt her wife", "hurt his husband",
+    "hurt the neighbor", "hurt someone else", "hurt a neighbor",
+    "attacked someone", "hurt a child", "hurt the kids",
+    "violent toward", "violent with his wife", "violent with her",
+    "got violent with", "becoming violent toward",
+]
+
+SELF_REPORT_PHRASES = [
+    "i slapped", "i hit him", "i hit her",
+    "i pushed him", "i pushed her", "i shoved him", "i shoved her",
+    "i grabbed him", "i grabbed her", "i struck him", "i struck her",
+    "i punched him", "i punched her", "i kicked him", "i kicked her",
+    "i yelled at him", "i yelled at her", "i screamed at him", "i screamed at her",
+    "i threw something at", "i lost it with him", "i lost it with her",
+    "i hurt him", "i hurt her", "i restrained him", "i restrained her"
+]
 
 MENTAL_EMERGENCY_PHRASES = [
     "wants to die", "want to die", "wants to end it", "end it all",
@@ -98,7 +202,16 @@ PHYSICAL_EMERGENCY_PHRASES = [
     "don't move him", "don't move her", "dont move him", "dont move her",
     "afraid to move", "scared to move",
     # overdose
-    "overdose", "drug overdose"
+    "overdose", "drug overdose",
+    # self-harm with injury — physical AND mental, treat as physical emergency
+    "slit his wrist", "slit her wrist", "slit his wrists", "slit her wrists",
+    "cut his wrist", "cut her wrist", "cut his wrists", "cut her wrists",
+    "cut himself", "cut herself", "cutting himself", "cutting herself",
+    "stabbed himself", "stabbed herself", "shot himself", "shot herself",
+    "hung himself", "hung herself", "hanging himself", "hanging herself",
+    "tried to hang", "attempted suicide", "suicide attempt",
+    "took too many pills", "took all his pills", "took all her pills",
+    "swallowed too many", "swallowed a bottle"
 ]
 
 EXTRACTION_RULES = {
@@ -277,12 +390,28 @@ def mock_extract(note_text):
     emergency_phrase = None
     emergency_type = None
 
-    for phrase in PHYSICAL_EMERGENCY_PHRASES:
+    for phrase in THIRD_PARTY_VIOLENCE_PHRASES:
         if phrase in text_lower:
             emergency = True
             emergency_phrase = phrase
-            emergency_type = "physical"
+            emergency_type = "third_party"
             break
+
+    if not emergency:
+        for phrase in CAREGIVER_SAFETY_PHRASES:
+            if phrase in text_lower:
+                emergency = True
+                emergency_phrase = phrase
+                emergency_type = "caregiver_safety"
+                break
+
+    if not emergency:
+        for phrase in PHYSICAL_EMERGENCY_PHRASES:
+            if phrase in text_lower:
+                emergency = True
+                emergency_phrase = phrase
+                emergency_type = "physical"
+                break
 
     if not emergency:
         for phrase in MENTAL_EMERGENCY_PHRASES:
@@ -291,6 +420,15 @@ def mock_extract(note_text):
                 emergency_phrase = phrase
                 emergency_type = "mental"
                 break
+
+    # Self-report detection — silent log, no overlay
+    self_report = False
+    self_report_phrase = None
+    for phrase in SELF_REPORT_PHRASES:
+        if phrase in text_lower:
+            self_report = True
+            self_report_phrase = phrase
+            break
 
     # Tag extraction
     tags = {}
@@ -336,7 +474,7 @@ def mock_extract(note_text):
     elif tags:
         note = f"{len(tags)} topic(s) logged."
     else:
-        note = "Entry logged. No specific topics detected — consider adding more detail."
+        note = "Nothing specific detected — see the follow-up question below."
 
     return {
         "tags": tags,
@@ -344,6 +482,8 @@ def mock_extract(note_text):
         "emergency": emergency,
         "emergency_type": emergency_type,
         "emergency_phrase": emergency_phrase,
+        "self_report": self_report,
+        "self_report_phrase": self_report_phrase,
         "note": note,
         "sandbox": True
     }
@@ -369,6 +509,80 @@ def extract_note(note_text):
     if SANDBOX_MODE:
         return mock_extract(note_text)
     return claude_extract(note_text)
+
+# ── Drug Interaction Check (NIH RxNorm — free, no key) ────────────────────────
+
+def check_drug_interactions(new_drug, existing_drugs):
+    """Check interactions using FDA drug label database — free, no key required."""
+    interactions = []
+    seen_keys = set()
+    try:
+        for existing in existing_drugs:
+            for primary, secondary in [(new_drug, existing), (existing, new_drug)]:
+                key = tuple(sorted([primary.lower(), secondary.lower()]))
+                if key in seen_keys:
+                    continue
+                url = (
+                    f"https://api.fda.gov/drug/label.json"
+                    f"?search=openfda.generic_name:\"{urllib.parse.quote(primary.lower())}\""
+                    f"+AND+drug_interactions:\"{urllib.parse.quote(secondary.lower())}\""
+                    f"&limit=1"
+                )
+                try:
+                    with urllib.request.urlopen(url, timeout=6) as resp:
+                        data = json.loads(resp.read())
+                    results = data.get("results") or []
+                    if not results:
+                        continue
+                    di_text = (results[0].get("drug_interactions") or [""])[0]
+                    sentences = di_text.replace("\n", " ").split(". ")
+                    relevant = [s.strip() for s in sentences if secondary.lower() in s.lower()]
+                    if relevant:
+                        seen_keys.add(key)
+                        interactions.append({
+                            "drugs": [primary.title(), secondary.title()],
+                            "description": ". ".join(relevant[:2])[:400],
+                            "severity": ""
+                        })
+                        break
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return interactions
+
+# ── AI Follow-up Question ──────────────────────────────────────────────────────
+
+def generate_follow_up(tags, patient_name=None):
+    name = patient_name or "they"
+    concerns = [k for k, v in tags.items() if v.get("sentiment") == "concerning"]
+    positives = [k for k, v in tags.items() if v.get("sentiment") == "positive"]
+
+    if not tags:
+        return random.choice([
+            f"You mentioned things today — what stood out most?",
+            f"Can you say more about how {name} seemed?",
+            f"What was the most important thing that happened today?",
+        ])
+
+    priority = {
+        "sleep":        f"That sounds like another rough night. Has the sleep disruption been affecting {name} during the day?",
+        "medication":   f"When they refused medication, did they say why? Did they end up taking it later?",
+        "mood":         f"You noted some mood concerns — did anything specific seem to trigger it, or did it come on gradually?",
+        "behavior":     f"The behavior you described sounds difficult to manage. How are you holding up after today?",
+        "physical":     f"You mentioned some physical symptoms — how is {name} feeling right now?",
+        "appointments": f"When they missed the appointment, was that a refusal or did something else come up?",
+        "appetite":     f"They didn't eat well today — have they had enough to drink? Fluids matter too.",
+        "social":       f"The withdrawal you described — is this new, or has it been building over the past few days?",
+    }
+    for cat in ["sleep", "medication", "mood", "behavior", "physical", "appointments", "appetite", "social"]:
+        if cat in concerns:
+            return priority[cat]
+
+    if positives and not concerns:
+        return f"Sounds like a better day than usual. What do you think made the difference today?"
+
+    return f"Is there anything else from today you want to make sure gets captured?"
 
 # ── Pattern Detection ──────────────────────────────────────────────────────────
 
@@ -455,74 +669,122 @@ def mock_generate_summary(days=14):
     conn = get_db()
     cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     rows = conn.execute(
-        "SELECT raw_note, extracted_tags, created_at FROM entries WHERE created_at >= ? ORDER BY created_at DESC",
+        "SELECT raw_note, extracted_tags, custom_tags, created_at, is_emergency_flagged FROM entries WHERE created_at >= ? ORDER BY created_at ASC",
         (cutoff,)
     ).fetchall()
+    meds = conn.execute(
+        "SELECT name, dosage, frequency, scheduled_time FROM medications WHERE is_active=1 ORDER BY name"
+    ).fetchall()
+    alert_rows = conn.execute(
+        "SELECT alert_type, alert_message, created_at FROM alerts WHERE created_at >= ? AND alert_type='emergency' ORDER BY created_at DESC",
+        (cutoff,)
+    ).fetchall()
+    patient = conn.execute("SELECT name, is_veteran FROM patients LIMIT 1").fetchone()
     conn.close()
 
     if not rows:
         return {"summary": "No entries found for the selected period.", "entries_reviewed": 0}
 
-    total = len(rows)
+    total          = len(rows)
     concern_counts = {}
     positive_counts = {}
+    custom_counts  = {}
+    emergency_count = 0
 
     for row in rows:
+        if row["is_emergency_flagged"]:
+            emergency_count += 1
         try:
-            tags = json.loads(row["extracted_tags"] or "{}")
+            for cat, data in json.loads(row["extracted_tags"] or "{}").items():
+                if data.get("sentiment") == "concerning":
+                    concern_counts[cat] = concern_counts.get(cat, 0) + 1
+                elif data.get("sentiment") == "positive":
+                    positive_counts[cat] = positive_counts.get(cat, 0) + 1
         except Exception:
-            continue
-        for cat, data in tags.items():
-            if data.get("sentiment") == "concerning":
-                concern_counts[cat] = concern_counts.get(cat, 0) + 1
-            elif data.get("sentiment") == "positive":
-                positive_counts[cat] = positive_counts.get(cat, 0) + 1
+            pass
+        try:
+            for t in json.loads(row["custom_tags"] or "[]"):
+                custom_counts[t] = custom_counts.get(t, 0) + 1
+        except Exception:
+            pass
 
-    first_date = rows[-1]["created_at"][:10]
-    last_date  = rows[0]["created_at"][:10]
+    first_date   = rows[0]["created_at"][:10]
+    last_date    = rows[-1]["created_at"][:10]
+    patient_name = patient["name"] if patient else "the patient"
+    is_veteran   = bool(patient["is_veteran"]) if patient else False
 
     label_map = {
-        "sleep": "Sleep", "mood": "Mood", "appetite": "Appetite",
-        "medication": "Medication", "appointments": "Appointments",
-        "social": "Social engagement", "physical": "Physical health", "behavior": "Behavior"
+        "sleep":        "Sleep",
+        "mood":         "Mood / Emotional State",
+        "appetite":     "Appetite / Nutrition",
+        "medication":   "Medication Adherence",
+        "appointments": "Appointments",
+        "social":       "Social Engagement",
+        "physical":     "Physical Health",
+        "behavior":     "Behavior"
     }
 
     lines = [
         "CAREGIVER OBSERVATION SUMMARY",
-        f"Period covered:  {first_date} through {last_date}",
-        f"Total entries:   {total}",
+        "=" * 46,
+        f"Patient:          {patient_name}{' (Veteran)' if is_veteran else ''}",
+        f"Period:           {first_date} through {last_date}  ({days} days)",
+        f"Total entries:    {total}",
+        f"Emergency flags:  {emergency_count}",
         "",
-        "AREAS OF CONCERN",
-        "─" * 40
+        "CURRENT MEDICATIONS",
+        "─" * 46,
     ]
+    if meds:
+        for m in meds:
+            line = f"  • {m['name']}"
+            if m["dosage"]:         line += f"  —  {m['dosage']}"
+            if m["frequency"]:      line += f"  ({m['frequency']})"
+            if m["scheduled_time"]: line += f"  @ {m['scheduled_time']}"
+            lines.append(line)
+    else:
+        lines.append("  No medications on file.")
+
+    lines += ["", "AREAS OF CONCERN", "─" * 46]
     if concern_counts:
         for cat, count in sorted(concern_counts.items(), key=lambda x: x[1], reverse=True):
             pct = round(count / total * 100)
-            lines.append(f"  {label_map.get(cat, cat.title()):<22} {count}/{total} entries ({pct}%)")
+            lines.append(f"  {label_map.get(cat, cat.title()):<28}  {count}/{total} entries  ({pct}%)")
     else:
         lines.append("  No recurring concerns flagged during this period.")
 
-    lines += ["", "POSITIVE OBSERVATIONS", "─" * 40]
+    lines += ["", "POSITIVE OBSERVATIONS", "─" * 46]
     if positive_counts:
         for cat, count in sorted(positive_counts.items(), key=lambda x: x[1], reverse=True):
-            lines.append(f"  {label_map.get(cat, cat.title()):<22} noted positively in {count} entries")
+            lines.append(f"  {label_map.get(cat, cat.title()):<28}  noted positively in {count} entries")
     else:
         lines.append("  No specific positive observations recorded.")
+
+    if emergency_count > 0:
+        lines += ["", "INCIDENTS AND EMERGENCY FLAGS", "─" * 46]
+        for a in alert_rows:
+            lines.append(f"  [{a['created_at'][:10]}]  {a['alert_message']}")
+
+    if custom_counts:
+        lines += ["", "CAREGIVER-NOTED TOPICS", "─" * 46]
+        for topic, count in sorted(custom_counts.items(), key=lambda x: x[1], reverse=True):
+            lines.append(f"  • {topic}  ({count} mention{'s' if count > 1 else ''})")
 
     lines += [
         "",
         "FOR THE CLINICIAN",
-        "─" * 40,
-        "This summary reflects observations reported by the caregiver through a",
-        "structured daily logging tool. All information is the caregiver's own",
-        "experience and should be reviewed alongside clinical assessment.",
+        "─" * 46,
+        f"This summary reflects observations reported by the caregiver of {patient_name}",
+        "through a structured daily logging tool. All information represents the",
+        "caregiver's direct observations and should be reviewed alongside clinical",
+        "assessment. The caregiver retains final say on all care decisions.",
         "",
-        "The caregiver retains final say on all care decisions. This tool flags",
-        "patterns and generates summaries to support — not replace — clinical judgment.",
-        "",
-        "[SANDBOX] In production, this narrative is drafted by Claude AI using the",
-        "full text of each entry, not just keyword tags."
     ]
+    if SANDBOX_MODE:
+        lines += [
+            "[SANDBOX] In production, this narrative is drafted by Claude AI",
+            "using the full text of each entry, not keyword extraction alone.",
+        ]
 
     return {
         "summary": "\n".join(lines),
@@ -592,6 +854,9 @@ def save_entry():
     extraction = extract_note(note)
 
     conn = get_db()
+    patient_row = conn.execute("SELECT name FROM patients LIMIT 1").fetchone()
+    patient_name = patient_row["name"] if patient_row else None
+
     cur = conn.execute(
         "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase) VALUES (?, ?, ?, ?)",
         (note, json.dumps(extraction["tags"]),
@@ -604,6 +869,12 @@ def save_entry():
         conn.execute(
             "INSERT INTO alerts (entry_id, alert_type, alert_message) VALUES (?, 'emergency', ?)",
             (entry_id, f"Emergency language detected: \"{extraction['emergency_phrase']}\"")
+        )
+
+    if extraction.get("self_report"):
+        conn.execute(
+            "INSERT INTO alerts (entry_id, alert_type, alert_message) VALUES (?, 'incident', ?)",
+            (entry_id, f"Self-reported incident logged: \"{extraction['self_report_phrase']}\"")
         )
 
     conn.commit()
@@ -623,7 +894,8 @@ def save_entry():
     conn.commit()
     conn.close()
 
-    return jsonify({"id": entry_id, "extraction": extraction, "patterns": patterns})
+    follow_up = generate_follow_up(extraction["tags"], patient_name)
+    return jsonify({"id": entry_id, "extraction": extraction, "patterns": patterns, "follow_up": follow_up})
 
 @app.route("/api/entries", methods=["GET"])
 def get_entries():
@@ -631,7 +903,7 @@ def get_entries():
     offset = int(request.args.get("offset", 0))
     conn   = get_db()
     rows   = conn.execute(
-        "SELECT id, created_at, raw_note, extracted_tags, corrected_tags, is_emergency_flagged FROM entries ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        "SELECT id, created_at, raw_note, extracted_tags, corrected_tags, custom_tags, is_emergency_flagged FROM entries ORDER BY created_at DESC LIMIT ? OFFSET ?",
         (limit, offset)
     ).fetchall()
     total = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
@@ -644,6 +916,7 @@ def get_entries():
             "raw_note": r["raw_note"],
             "tags": json.loads(r["extracted_tags"] or "{}"),
             "corrected_tags": json.loads(r["corrected_tags"]) if r["corrected_tags"] else None,
+            "custom_tags": json.loads(r["custom_tags"] or "[]"),
             "is_emergency": bool(r["is_emergency_flagged"])
         } for r in rows],
         "total": total
@@ -672,15 +945,183 @@ def generate_summary():
     days = int(data.get("days", 14))
     return jsonify(mock_generate_summary(days))
 
-@app.route("/api/alerts", methods=["GET"])
-def get_alerts():
+_MED_LIST = None
+
+def get_med_list():
+    global _MED_LIST
+    if _MED_LIST is None:
+        path = os.path.join(os.path.dirname(__file__), "static", "medications.json")
+        try:
+            with open(path) as f:
+                _MED_LIST = json.load(f)
+        except Exception:
+            _MED_LIST = []
+    return _MED_LIST
+
+@app.route("/api/medications/autocomplete", methods=["GET"])
+def medication_autocomplete():
+    q = (request.args.get("q") or "").strip().lower()
+    if len(q) < 2:
+        return jsonify({"suggestions": []})
+
+    med_list = get_med_list()
+    results = []
+    seen_lower = set()
+
+    # 1. Exact prefix matches from local list (fast, offline, handles any spelling)
+    for med in med_list:
+        if med.lower().startswith(q):
+            key = med.lower()
+            if key not in seen_lower:
+                seen_lower.add(key)
+                results.append(med)
+        if len(results) >= 6:
+            break
+
+    # 2. Substring matches from local list if prefix didn't fill 6
+    if len(results) < 6:
+        for med in med_list:
+            if q in med.lower() and med.lower() not in seen_lower:
+                seen_lower.add(med.lower())
+                results.append(med)
+            if len(results) >= 6:
+                break
+
+    # 3. Misspelling fallback — use first 3 chars as prefix against local list
+    if len(results) < 3 and len(q) >= 3:
+        prefix3 = q[:3]
+        for med in med_list:
+            if med.lower().startswith(prefix3) and med.lower() not in seen_lower:
+                seen_lower.add(med.lower())
+                results.append(med)
+            if len(results) >= 6:
+                break
+
+    return jsonify({"suggestions": results[:6]})
+
+@app.route("/api/medications", methods=["GET"])
+def get_medications():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM medications WHERE is_active=1 ORDER BY name").fetchall()
+    conn.close()
+    return jsonify({"medications": [dict(r) for r in rows]})
+
+@app.route("/api/medications", methods=["POST"])
+def add_medication():
+    data = request.get_json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Medication name required."}), 400
+    dosage         = (data.get("dosage") or "").strip() or None
+    frequency      = (data.get("frequency") or "").strip() or None
+    scheduled_time = (data.get("scheduled_time") or "").strip() or None
+    notes          = (data.get("notes") or "").strip() or None
+
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO medications (name, dosage, frequency, scheduled_time, notes) VALUES (?,?,?,?,?)",
+        (name, dosage, frequency, scheduled_time, notes)
+    )
+    med_id = cur.lastrowid
+    conn.commit()
+    existing = conn.execute(
+        "SELECT name FROM medications WHERE is_active=1 AND id != ?", (med_id,)
+    ).fetchall()
+    conn.close()
+
+    interactions = check_drug_interactions(name, [r["name"] for r in existing]) if existing else []
+    return jsonify({"success": True, "id": med_id, "interactions": interactions})
+
+@app.route("/api/medications/<int:med_id>", methods=["PUT"])
+def update_medication(med_id):
+    data = request.get_json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Medication name required."}), 400
+    conn = get_db()
+    conn.execute(
+        "UPDATE medications SET name=?, dosage=?, frequency=?, scheduled_time=?, notes=? WHERE id=?",
+        (name, data.get("dosage"), data.get("frequency"), data.get("scheduled_time"), data.get("notes"), med_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/medications/<int:med_id>", methods=["DELETE"])
+def remove_medication(med_id):
+    conn = get_db()
+    conn.execute("UPDATE medications SET is_active=0 WHERE id=?", (med_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/entry/<int:entry_id>/custom-topics", methods=["POST"])
+def add_custom_topic(entry_id):
+    data   = request.get_json()
+    topic  = (data.get("topic") or "").strip()
+    detail = (data.get("detail") or "").strip() or None
+    if not topic:
+        return jsonify({"error": "Topic required."}), 400
+    conn = get_db()
+    row  = conn.execute("SELECT custom_tags FROM entries WHERE id=?", (entry_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Entry not found."}), 404
+    existing = json.loads(row["custom_tags"] or "[]")
+    entry = {"name": topic, "detail": detail} if detail else topic
+    existing.append(entry)
+    conn.execute("UPDATE entries SET custom_tags=? WHERE id=?", (json.dumps(existing), entry_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "custom_tags": existing})
+
+@app.route("/api/entry/<int:entry_id>/custom-topics", methods=["PUT"])
+def replace_custom_topics(entry_id):
+    data = request.get_json()
+    custom_tags = data.get("custom_tags", [])
+    conn = get_db()
+    conn.execute("UPDATE entries SET custom_tags=? WHERE id=?", (json.dumps(custom_tags), entry_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "custom_tags": custom_tags})
+
+@app.route("/api/custom-topics/suggestions", methods=["GET"])
+def topic_suggestions():
     conn = get_db()
     rows = conn.execute(
-        """SELECT a.id, a.created_at, a.alert_type, a.alert_message,
-                  a.deletion_status, a.entry_id, e.created_at as entry_date
-           FROM alerts a LEFT JOIN entries e ON a.entry_id = e.id
-           ORDER BY a.created_at DESC"""
+        "SELECT custom_tags FROM entries WHERE custom_tags IS NOT NULL AND custom_tags != '[]'"
     ).fetchall()
+    conn.close()
+    counts = {}
+    for row in rows:
+        try:
+            for t in json.loads(row["custom_tags"]):
+                name = t["name"] if isinstance(t, dict) else t
+                counts[name] = counts.get(name, 0) + 1
+        except Exception:
+            pass
+    return jsonify({"suggestions": [t for t, _ in sorted(counts.items(), key=lambda x: x[1], reverse=True)[:20]]})
+
+@app.route("/api/alerts", methods=["GET"])
+def get_alerts():
+    date_filter = request.args.get("date", "").strip()
+    conn = get_db()
+    if date_filter:
+        rows = conn.execute(
+            """SELECT a.id, a.created_at, a.alert_type, a.alert_message,
+                      a.deletion_status, a.entry_id, e.created_at as entry_date
+               FROM alerts a LEFT JOIN entries e ON a.entry_id = e.id
+               WHERE a.created_at LIKE ?
+               ORDER BY a.created_at DESC""",
+            (date_filter + "%",)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT a.id, a.created_at, a.alert_type, a.alert_message,
+                      a.deletion_status, a.entry_id, e.created_at as entry_date
+               FROM alerts a LEFT JOIN entries e ON a.entry_id = e.id
+               ORDER BY a.created_at DESC"""
+        ).fetchall()
     count = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
     conn.close()
     return jsonify({
@@ -718,21 +1159,27 @@ def seed_data():
     if not SANDBOX_MODE:
         return jsonify({"error": "Seed only available in sandbox mode."}), 403
 
+    from datetime import datetime, timedelta
+    today = datetime.now()
+    def dts(days_ago, hour=20, minute=0):
+        d = today - timedelta(days=days_ago)
+        return d.strftime(f"%Y-%m-%d {hour:02d}:{minute:02d}:00")
+
     sample_notes = [
-        ("2026-06-03 20:14:00", "He didn't sleep again last night, maybe 2 or 3 hours total. Seemed really on edge this morning, didn't want to talk. Skipped his PT appointment. I'm getting worn out."),
-        ("2026-06-04 21:02:00", "Better day today. He ate breakfast and lunch which is unusual lately. We watched TV together for a while. Still going to bed late but actually slept through. Small win."),
-        ("2026-06-05 20:45:00", "Couldn't sleep until 4am, then up at 7. Very irritable all morning. Refused his morning meds, took them after lunch. I called the VA caregiver line just to talk to someone."),
-        ("2026-06-06 21:30:00", "Bad night again, nightmares. Woke up sweating and was confused for a few minutes, didn't know where he was. Calmed down eventually. Didn't want to eat breakfast. Ate a little at dinner."),
-        ("2026-06-07 20:10:00", "Therapy session today and he actually went, which is real progress. Mood was noticeably better afterward. He even laughed at something on TV. Ate a full dinner. Still not sleeping great but good day overall."),
-        ("2026-06-08 21:15:00", "Slept okay, maybe 5 hours. Quiet day, mostly stayed inside and watched TV. A little withdrawn but not combative. Took his meds fine. I'm exhausted but holding up."),
-        ("2026-06-09 20:55:00", "Terrible night. Heard him yelling in his sleep around 2am, flashback I think. Spent most of the day in his room and wouldn't come out. Refused lunch. By dinner he ate a little. He seems paranoid about something, not sure what."),
-        ("2026-06-10 21:40:00", "He was really paranoid today, kept checking the windows. Wouldn't go outside. Didn't sleep well again, maybe 3 hours. Skipped dinner. I am worried about this pattern. His mood has been so low."),
-        ("2026-06-11 20:30:00", "His brother came to visit and he really brightened up. Ate well, slept about 6 hours. Still hasn't been to PT. The social connection clearly helps him."),
-        ("2026-06-12 21:00:00", "Up at 3am again. Restless all morning. Wouldn't take his medication, said he didn't need it. Seemed agitated. Missed his VA appointment. Behavior was erratic, pacing a lot. Hard day."),
-        ("2026-06-13 20:20:00", "Slept a little better, 5 hours or so. He was calmer today. Took his meds without a fight. Ate breakfast. We sat outside for a bit in the afternoon which was nice. Mood still not great but manageable."),
-        ("2026-06-14 21:10:00", "Nightmares again. He was on edge all day, couldn't settle. Skipped his PT appointment again. Barely ate. I'm worried about the sleep — this has been going on for weeks now."),
-        ("2026-06-15 20:50:00", "Decent day. He ate three meals which hasn't happened in a while. Still nervous and jumpy but no major incidents. Took all his meds. Slept about 4 hours. His therapist called to check in which helped."),
-        ("2026-06-16 20:00:00", "Rough night, up at 1am and 4am. He was withdrawn all day, stayed in his room mostly. Refused breakfast. Took meds after I reminded him twice. Mood is really low. I'm trying to stay patient but I'm running low too.")
+        (dts(13, 20, 14), "He didn't sleep again last night, maybe two hours at most. Seemed on edge all morning. Refused his medication at breakfast and wouldn't say why. Ate a little at dinner but picked at it."),
+        (dts(12, 21,  2), "Better day today. Slept through the night which hasn't happened in a while. Took his medication without any issues. Good appetite at lunch and dinner. Seemed more relaxed, even sat outside for a bit."),
+        (dts(11, 20, 45), "Mood was low all day. Didn't want to talk, stayed in his room most of the morning. Skipped his PT appointment — said he didn't feel up to it. Ate a full dinner though."),
+        (dts(10, 21, 30), "Rough night again, kept waking up. Seemed on edge and irritable this morning, snapped at me when I brought his medication. Eventually took it but it took about 20 minutes. Missed lunch, ate dinner."),
+        (dts( 9, 20, 10), "He complained of pain in his lower back, said it has been building for a few days. Walked slowly, seemed uncomfortable. Took his meds on time. Ate well. Called the VA to schedule a follow-up."),
+        (dts( 8, 21, 15), "Good day overall. Slept well, woke up on his own around 8. In a good mood, talked more than usual. Kept his PT appointment and came back saying it went well. Ate everything at dinner."),
+        (dts( 7, 20, 55), "Didn't sleep much. Withdrew most of the day, wouldn't come out of his room for lunch. Refused his meds in the morning and again at night. Seemed distant, couldn't reach him when I tried to talk."),
+        (dts( 6, 21, 40), "Woke up agitated. During lunch he said he doesn't want to be here anymore and that things aren't going to get better. I stayed with him and called the VA crisis line after."),
+        (dts( 5, 20, 30), "Quiet day after yesterday. He was calmer but still withdrawn. Took his medication without a fight, which was good. Didn't eat much. The VA called back to check in and he talked to them briefly."),
+        (dts( 4, 21,  0), "Noticeably better today. Kept his PT appointment, first time in two weeks. Seemed lighter when he got back. Good appetite. Slept well last night. Had a phone call with his brother."),
+        (dts( 3, 20, 20), "Sleep was bad again, restless night. Mood was low in the morning. Took his meds but complained about them. Ate breakfast, skipped lunch. Seemed to stabilize by evening."),
+        (dts( 2, 21, 10), "Refused his medication again this morning, said they make him feel foggy. Missed his VA appointment, said he forgot. Appetite okay at dinner. Mood flat but not agitated."),
+        (dts( 1, 20, 50), "He took a fall getting out of the shower this morning and hit his head on the towel bar. Seemed okay, no loss of consciousness, but I watched him closely all day. Took his meds. Ate well. Called the nurse line to report it."),
+        (dts( 0, 20,  0), "Slept about five hours, better than the last few nights. Mood was okay this morning. Took his medication with breakfast without any issues. Ate a full lunch. PT appointment is tomorrow and he said he plans to go."),
     ]
 
     conn = get_db()
@@ -781,6 +1228,7 @@ def seed_data():
 
 if __name__ == "__main__":
     init_db()
+    migrate_db()
     print()
     print("  CareLog — Caregiver AI Sandbox")
     print("  --------------------------------")
