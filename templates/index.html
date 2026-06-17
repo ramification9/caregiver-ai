@@ -139,16 +139,24 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .badge-incident   { background: #F4ECF7; color: #6C3483; }
 .alert-filter-cards { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
 .alert-filter-card {
-  cursor:pointer; border:2px solid var(--border); border-radius:10px;
-  padding:10px 14px; background:white; text-align:center; min-width:80px;
-  transition: border-color 0.15s, background 0.15s;
+  cursor:pointer; border:3px solid transparent; border-radius:10px;
+  padding:10px 14px; text-align:center; min-width:80px;
+  transition: opacity 0.15s, transform 0.1s;
+  opacity: 0.65;
 }
-.alert-filter-card:hover { border-color: var(--navy); }
-.alert-filter-card.active { border-color: var(--navy); background: var(--navy); color: white; }
-.alert-filter-card.active .afc-label { color: white; }
-.alert-filter-card.active .afc-count { color: rgba(255,255,255,0.8); }
-.afc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--text); }
-.afc-count { font-size:20px; font-weight:800; color:var(--navy); margin-bottom:2px; }
+.alert-filter-card:hover { opacity: 1; transform: translateY(-1px); }
+.alert-filter-card.active { opacity: 1; border-color: rgba(0,0,0,0.25); transform: none; }
+.afc-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+.afc-count { font-size:22px; font-weight:800; margin-bottom:2px; }
+
+/* Hospital color coding — red = immediate, amber = urgent, purple = notable, navy = all */
+.afc-all            { background:#1B2A4A; color:white; }
+.afc-mental         { background:#C0392B; color:white; }
+.afc-physical       { background:#E74C3C; color:white; }
+.afc-caregiver      { background:#E67E22; color:white; }
+.afc-third_party    { background:#7B241C; color:white; }
+.afc-pattern        { background:#F39C12; color:white; }
+.afc-incident       { background:#6C3483; color:white; }
 .alert-body { flex: 1; }
 .alert-body p { font-size: 14px; margin-bottom: 4px; }
 .alert-body .alert-meta { font-size: 12px; color: var(--muted); }
@@ -423,31 +431,31 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     <div style="margin-bottom:16px;">
       <h2 style="color:var(--navy);font-size:18px;margin-bottom:12px;">Alert Log</h2>
       <div class="alert-filter-cards" id="alert-filter-cards">
-        <div class="alert-filter-card active" onclick="setAlertFilter('all', this)">
+        <div class="alert-filter-card afc-all active" onclick="setAlertFilter('all', this)">
           <div class="afc-count" id="afc-count-all">—</div>
-          <div class="afc-label">All</div>
+          <div class="afc-label">All Alerts</div>
         </div>
-        <div class="alert-filter-card" onclick="setAlertFilter('mental', this)">
+        <div class="alert-filter-card afc-mental" onclick="setAlertFilter('mental', this)">
           <div class="afc-count" id="afc-count-mental">—</div>
           <div class="afc-label">Mental Health</div>
         </div>
-        <div class="alert-filter-card" onclick="setAlertFilter('physical', this)">
+        <div class="alert-filter-card afc-physical" onclick="setAlertFilter('physical', this)">
           <div class="afc-count" id="afc-count-physical">—</div>
           <div class="afc-label">Medical</div>
         </div>
-        <div class="alert-filter-card" onclick="setAlertFilter('caregiver_safety', this)">
+        <div class="alert-filter-card afc-caregiver" onclick="setAlertFilter('caregiver_safety', this)">
           <div class="afc-count" id="afc-count-caregiver_safety">—</div>
           <div class="afc-label">Caregiver Safety</div>
         </div>
-        <div class="alert-filter-card" onclick="setAlertFilter('third_party', this)">
+        <div class="alert-filter-card afc-third_party" onclick="setAlertFilter('third_party', this)">
           <div class="afc-count" id="afc-count-third_party">—</div>
           <div class="afc-label">Violence</div>
         </div>
-        <div class="alert-filter-card" onclick="setAlertFilter('pattern', this)">
+        <div class="alert-filter-card afc-pattern" onclick="setAlertFilter('pattern', this)">
           <div class="afc-count" id="afc-count-pattern">—</div>
           <div class="afc-label">Patterns</div>
         </div>
-        <div class="alert-filter-card" onclick="setAlertFilter('incident', this)">
+        <div class="alert-filter-card afc-incident" onclick="setAlertFilter('incident', this)">
           <div class="afc-count" id="afc-count-incident">—</div>
           <div class="afc-label">Incidents</div>
         </div>
