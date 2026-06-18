@@ -659,16 +659,16 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     <div class="checkin-resources" id="checkin-resources">
       <h4>You don't have to do this alone</h4>
       <div class="checkin-resource-line">
-        <strong>Caregiver Support Line</strong>
-        1-855-260-3274 — available now, for caregivers
+        <strong>VA Caregiver Support Line</strong>
+        1-855-260-3274 — free support for caregivers of veterans, available now
       </div>
       <div class="checkin-resource-line">
-        <strong>Crisis & Mental Health</strong>
-        Call or text 988 — 24/7, free, confidential
+        <strong>988 — Crisis & Mental Health</strong>
+        Call or text 988 — 24/7, free, confidential, for anyone
       </div>
-      <div class="checkin-resource-line" id="checkin-vet-line" style="display:none;">
-        <strong>Veterans Crisis Line</strong>
-        Call 988, press 1 — specifically for veterans and their families
+      <div class="checkin-resource-line">
+        <strong>SAMHSA National Helpline</strong>
+        1-800-662-4357 — free, confidential mental health support, 24/7
       </div>
       <button class="btn btn-primary" style="margin-top:16px;width:100%;" onclick="closeCheckin()">Thank you — continue to my entry</button>
     </div>
@@ -1882,8 +1882,6 @@ function openCaregiverCheckin() {
   } else {
     nameLine.textContent = 'What you just went through was hard. Take a moment.';
   }
-  const vetLine = document.getElementById('checkin-vet-line');
-  vetLine.style.display = (currentPatient && currentPatient.is_veteran) ? 'block' : 'none';
   document.getElementById('checkin-resources').style.display = 'none';
   overlay.classList.add('open');
 }
@@ -2317,6 +2315,28 @@ async function loadResources() {
     });
   }
   groups.push({ label: 'Caregiver Support', cards: supportCards });
+
+  // ── Your Well-Being (always shown — caregiver is civilian) ──
+  groups.push({ label: 'Your Well-Being', cards: [
+    {
+      icon: '🧠',
+      title: 'SAMHSA National Helpline',
+      detail: 'Call <strong>1-800-662-4357</strong>. Free, confidential mental health and substance use support, 24/7. You don\'t have to be in crisis to call.',
+      contextual: false
+    },
+    {
+      icon: '📞',
+      title: '988 — For You Too',
+      detail: 'Call or text <strong>988</strong>. Caregiver burnout is real. The 988 Lifeline is for anyone — including you, not just the person you\'re caring for.',
+      contextual: false
+    },
+    {
+      icon: '🤝',
+      title: 'Caregiver Action Network',
+      detail: 'Peer support, education, and community for family caregivers of all kinds. caregiveraction.org',
+      contextual: false
+    }
+  ]});
 
   // ── Condition-Specific (contextual based on patterns) ──
   const contextCards = [];
