@@ -120,6 +120,11 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .pattern-body p { font-size: 14px; color: var(--text); }
 .pattern-count { font-size: 32px; font-weight: 800; color: var(--amber); flex-shrink: 0; margin-left: auto; }
 .no-patterns { background: var(--positive-bg); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--positive-text); font-weight: 600; }
+.ptn-section-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:var(--radius); cursor:pointer; user-select:none; margin-bottom:14px; font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; }
+.ptn-section-head .ptn-arrow { font-size:13px; transition:transform 0.2s; }
+.ptn-section-head.collapsed .ptn-arrow { transform:rotate(-90deg); }
+.ptn-section-body { overflow:hidden; transition:max-height 0.25s ease; }
+.ptn-section-body.collapsed { display:none; }
 
 #summary-output { display: none; }
 .sum-header { background: var(--navy); color: white; border-radius: var(--radius) var(--radius) 0 0; padding: 20px 24px; }
@@ -2016,15 +2021,31 @@ async function loadPatterns() {
   const list = document.getElementById('patterns-list');
   list.innerHTML = '';
 
-  function sectionHead(label, color, topMargin) {
-    const el = document.createElement('div');
-    el.style.cssText = `font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${color};padding-bottom:8px;border-bottom:2px solid ${color};margin-bottom:16px;${topMargin ? 'margin-top:32px;' : ''}`;
-    el.textContent = label;
-    return el;
+  function makeSection(label, color, bgColor) {
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '8px';
+
+    const head = document.createElement('div');
+    head.className = 'ptn-section-head';
+    head.style.cssText = `background:${bgColor};color:${color};`;
+    head.innerHTML = `<span>${label}</span><span class="ptn-arrow">▼</span>`;
+
+    const body = document.createElement('div');
+    body.className = 'ptn-section-body';
+
+    head.addEventListener('click', () => {
+      const collapsed = body.classList.toggle('collapsed');
+      head.classList.toggle('collapsed', collapsed);
+    });
+
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+    list.appendChild(wrap);
+    return body;
   }
 
   // ══ PATIENT PATTERNS ══════════════════════════════════════════════════════
-  list.appendChild(sectionHead('Patient Patterns', 'var(--navy)', false));
+  const patientBody = makeSection('Patient Patterns', 'var(--navy)', '#EBF5FB');
 
   if (cs.total_entries > 0) {
     const corrEl = document.createElement('div');
@@ -2040,17 +2061,16 @@ async function loadPatterns() {
             : 'Your corrections are saved alongside the original — they make the tool more accurate over time.'}
         </p>
       </div>`;
-    list.appendChild(corrEl);
+    patientBody.appendChild(corrEl);
   }
 
   if (d.patterns.length === 0) {
     const el = document.createElement('div');
     el.className = 'no-patterns';
-    el.style.marginBottom = '0';
     el.textContent = cs.total_entries === 0
       ? 'No entries yet. Keep logging — patterns appear after 3 or more entries in a week.'
       : 'No recurring patient concerns flagged in the last 7 days.';
-    list.appendChild(el);
+    patientBody.appendChild(el);
   }
 
   d.patterns.forEach(p => {
@@ -2064,21 +2084,19 @@ async function loadPatterns() {
         <p style="font-size:13px;color:var(--muted);margin-top:6px;">Consider mentioning this at the next clinical visit or calling ${(currentPatient && currentPatient.is_veteran) ? 'the VA Caregiver Support Line: <strong>1-855-260-3274</strong>' : 'a caregiver support line: <strong>1-855-227-3640</strong> (ARCH National Respite Network)'}</p>
       </div>
       <div class="pattern-count">${p.count}</div>`;
-    list.appendChild(el);
+    patientBody.appendChild(el);
   });
 
-  // ══ YOUR CHECK-INS ════════════════════════════════════════════════════════
-  list.appendChild(sectionHead('Your Check-Ins', 'var(--green)', true));
+  // ══ CAREGIVER CHECK-INS ═══════════════════════════════════════════════════
+  const cgBody = makeSection('Caregiver Check-Ins', 'var(--green)', '#EAFAF1');
 
   const wb = d.caregiver_wellbeing;
   if (!wb) {
     const el = document.createElement('div');
     el.className = 'no-patterns';
-    el.style.cssText = 'border-left:4px solid var(--green);';
     el.textContent = 'No check-ins yet. Rate yourself on the Log Today tab to start tracking.';
-    list.appendChild(el);
+    cgBody.appendChild(el);
   } else {
-    // Trend summary card
     const avgRating  = Math.round(wb.avg);
     const color      = RATING_COLORS[avgRating] || '#888';
     const label      = RATING_LABELS[avgRating] || '';
@@ -2097,30 +2115,29 @@ async function loadPatterns() {
     trendEl.innerHTML = `
       <div class="pattern-icon" style="font-size:22px;">🧡</div>
       <div class="pattern-body">
-        <h3>Your well-being — last 7 days</h3>
+        <h3>Well-being — last 7 days</h3>
         <p>Average: <strong style="color:${color};">${label} (${wb.avg}/5)</strong>
           ${trendText ? `&nbsp;·&nbsp;<span style="color:${trendColor};font-weight:600;">${trendText}</span>` : ''}
           &nbsp;·&nbsp;${wb.count} day${wb.count !== 1 ? 's' : ''} rated
         </p>
         <div style="margin-top:8px;">${dots}</div>
       </div>`;
-    list.appendChild(trendEl);
+    cgBody.appendChild(trendEl);
 
-    // Recent check-in notes
     const notedEntries = wb.ratings.filter(r => r.notes).slice(-5).reverse();
     notedEntries.forEach(r => {
       const noteColor = RATING_COLORS[r.rating] || '#888';
       const noteLabel = RATING_LABELS[r.rating] || '';
       const el = document.createElement('div');
       el.className = 'pattern-card';
-      el.style.cssText = `border-left:4px solid ${noteColor};`;
+      el.style.borderLeft = `4px solid ${noteColor}`;
       el.innerHTML = `
         <div class="pattern-icon" style="font-size:18px;color:${noteColor};font-weight:700;">${r.rating}</div>
         <div class="pattern-body">
           <h3 style="font-size:13px;color:var(--muted);font-weight:600;">${r.date} &nbsp;·&nbsp; ${noteLabel}</h3>
           <p style="margin-top:4px;">${escHtml(r.notes)}</p>
         </div>`;
-      list.appendChild(el);
+      cgBody.appendChild(el);
     });
   }
 }
