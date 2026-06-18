@@ -415,12 +415,18 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
         How are you holding up today?
         <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;">Optional</span>
       </p>
-      <div style="display:flex;gap:8px;margin-bottom:18px;" id="caregiver-rating-row">
+      <div style="display:flex;gap:8px;margin-bottom:14px;" id="caregiver-rating-row">
         <button class="rating-btn" data-rating="1" onclick="selectRating(1)" title="Struggling">1<span>Struggling</span></button>
         <button class="rating-btn" data-rating="2" onclick="selectRating(2)" title="Hard day">2<span>Hard</span></button>
         <button class="rating-btn" data-rating="3" onclick="selectRating(3)" title="Managing">3<span>Managing</span></button>
         <button class="rating-btn" data-rating="4" onclick="selectRating(4)" title="Good">4<span>Good</span></button>
         <button class="rating-btn" data-rating="5" onclick="selectRating(5)" title="Strong">5<span>Strong</span></button>
+      </div>
+      <div id="caregiver-note-area" style="display:none;margin-bottom:14px;">
+        <textarea id="caregiver-note-input"
+          placeholder="How are you feeling? What's weighing on you? This is your space — not part of the patient log."
+          style="width:100%;min-height:90px;padding:12px 14px;font-size:15px;border:2px solid var(--green);border-radius:var(--radius);resize:vertical;font-family:inherit;line-height:1.6;transition:border-color 0.2s;"
+          onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--green)'"></textarea>
       </div>
       <div style="display:flex;justify-content:flex-end;">
         <button class="btn btn-primary" id="submit-btn" onclick="submitNote()">Log Entry</button>
@@ -1359,6 +1365,9 @@ function selectRating(val) {
   document.querySelectorAll('.rating-btn').forEach(b => {
     b.classList.toggle('selected', parseInt(b.dataset.rating) === val);
   });
+  const area = document.getElementById('caregiver-note-area');
+  area.style.display = 'block';
+  document.getElementById('caregiver-note-input').focus();
 }
 
 // ── Character count ───────────────────────────────────────────────────────────
@@ -1469,12 +1478,13 @@ async function submitNote() {
     lastEntryId = d.id;
     lastTags    = d.extraction.tags;
 
-    // Save caregiver rating separately — not attached to the patient entry
+    // Save caregiver check-in separately — not attached to the patient entry
     if (selectedRating) {
+      const cgNote = (document.getElementById('caregiver-note-input').value || '').trim();
       fetch('/api/caregiver-rating', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({rating: selectedRating})
+        body: JSON.stringify({rating: selectedRating, notes: cgNote || null})
       }).catch(() => {});
     }
 
@@ -1489,6 +1499,8 @@ async function submitNote() {
     updateCharCount();
     selectedRating = null;
     document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('caregiver-note-input').value = '';
+    document.getElementById('caregiver-note-area').style.display = 'none';
 
   } catch(e) {
     alert('Something went wrong. Please try again.');

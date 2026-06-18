@@ -101,7 +101,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS caregiver_wellbeing (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at  TEXT DEFAULT (datetime('now','localtime')),
-            rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5)
+            rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+            notes       TEXT DEFAULT NULL
         );
     """)
     conn.commit()
@@ -135,9 +136,15 @@ def migrate_db():
         conn.execute("""CREATE TABLE caregiver_wellbeing (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at  TEXT DEFAULT (datetime('now','localtime')),
-            rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5)
+            rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+            notes       TEXT DEFAULT NULL
         )""")
         conn.commit()
+    else:
+        wb_cols = [row[1] for row in conn.execute("PRAGMA table_info(caregiver_wellbeing)").fetchall()]
+        if "notes" not in wb_cols:
+            conn.execute("ALTER TABLE caregiver_wellbeing ADD COLUMN notes TEXT DEFAULT NULL")
+            conn.commit()
     conn.close()
 
 # ── Mock AI Extraction (swap this block for Claude API in production) ──────────
@@ -1172,8 +1179,9 @@ def save_caregiver_rating():
             raise ValueError
     except (ValueError, TypeError):
         return jsonify({"error": "Rating must be 1–5"}), 400
+    notes = (data.get("notes") or "").strip() or None
     conn = get_db()
-    conn.execute("INSERT INTO caregiver_wellbeing (rating) VALUES (?)", (rating,))
+    conn.execute("INSERT INTO caregiver_wellbeing (rating, notes) VALUES (?, ?)", (rating, notes))
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
