@@ -131,6 +131,15 @@ def migrate_db():
     if "security_answer_hash" not in cg_cols:
         conn.execute("ALTER TABLE caregivers ADD COLUMN security_answer_hash TEXT DEFAULT NULL")
         conn.commit()
+    audit_cols = [row[1] for row in conn.execute("PRAGMA table_info(deletion_audit)").fetchall()]
+    if "confirm_code" not in audit_cols:
+        conn.execute("ALTER TABLE deletion_audit ADD COLUMN confirm_code TEXT DEFAULT NULL")
+        conn.commit()
+    alert_cols2 = [row[1] for row in conn.execute("PRAGMA table_info(alerts)").fetchall()]
+    if "is_deleted" not in alert_cols2:
+        conn.execute("ALTER TABLE alerts ADD COLUMN is_deleted INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE alerts ADD COLUMN deleted_at TEXT DEFAULT NULL")
+        conn.commit()
     wb_tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='caregiver_wellbeing'").fetchone()
     if not wb_tables:
         conn.execute("""CREATE TABLE caregiver_wellbeing (
@@ -1499,7 +1508,7 @@ def get_alerts():
     type_filter = request.args.get("type", "").strip()
     conn = get_db()
 
-    where_clauses = []
+    where_clauses = ["(a.is_deleted=0 OR a.is_deleted IS NULL)"]
     params = []
     if date_filter:
         where_clauses.append("a.created_at LIKE ?")
@@ -1507,7 +1516,7 @@ def get_alerts():
     if type_filter:
         where_clauses.append("a.alert_type = ?")
         params.append(type_filter)
-    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    where_sql = "WHERE " + " AND ".join(where_clauses)
 
     rows = conn.execute(
         f"""SELECT a.id, a.created_at, a.alert_type, a.alert_message,
@@ -1518,9 +1527,9 @@ def get_alerts():
         params
     ).fetchall()
 
-    total = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+    total = conn.execute("SELECT COUNT(*) FROM alerts WHERE is_deleted=0 OR is_deleted IS NULL").fetchone()[0]
     count_rows = conn.execute(
-        "SELECT alert_type, COUNT(*) as n FROM alerts GROUP BY alert_type"
+        "SELECT alert_type, COUNT(*) as n FROM alerts WHERE is_deleted=0 OR is_deleted IS NULL GROUP BY alert_type"
     ).fetchall()
     counts = {r["alert_type"]: r["n"] for r in count_rows}
     conn.close()
@@ -1538,22 +1547,63 @@ def get_alerts():
 
 @app.route("/api/alerts/<int:alert_id>/delete-request", methods=["POST"])
 def request_deletion(alert_id):
-    data       = request.get_json() or {}
-    requester  = data.get("requested_by", "caregiver")
-    reason     = data.get("reason", "")
+    data      = request.get_json() or {}
+    requester = data.get("requested_by", "caregiver")
+    reason    = (data.get("reason") or "").strip()
+    if not reason:
+        return jsonify({"error": "A reason is required."}), 400
     conn = get_db()
-    # Always log the attempt — this record itself cannot be deleted
+    alert = conn.execute("SELECT id FROM alerts WHERE id=? AND (is_deleted=0 OR is_deleted IS NULL)", (alert_id,)).fetchone()
+    if not alert:
+        conn.close()
+        return jsonify({"error": "Alert not found."}), 404
+    code = secrets.token_hex(3).upper()
     conn.execute(
-        "INSERT INTO deletion_audit (alert_id, requested_by, reason, status) VALUES (?, ?, ?, 'denied')",
-        (alert_id, requester, reason)
+        "INSERT INTO deletion_audit (alert_id, requested_by, reason, status, confirm_code) VALUES (?, ?, ?, 'pending', ?)",
+        (alert_id, requester, reason, code)
     )
     conn.commit()
     conn.close()
-    return jsonify({
-        "success": False,
-        "locked": True,
-        "message": "This record is locked. Deletion requires agreement from multiple authorized parties. Your request has been permanently logged."
-    })
+    return jsonify({"success": True, "confirm_code": code})
+
+@app.route("/api/alerts/<int:alert_id>/delete-confirm", methods=["POST"])
+def confirm_deletion(alert_id):
+    data = request.get_json() or {}
+    code = (data.get("confirm_code") or "").strip().upper()
+    pin  = (data.get("pin") or "").strip()
+    if not code or not pin:
+        return jsonify({"error": "Code and PIN are required."}), 400
+    conn = get_db()
+    cg = conn.execute("SELECT pin_hash FROM caregivers LIMIT 1").fetchone()
+    if not cg or not cg["pin_hash"] or not _verify_pin(pin, cg["pin_hash"]):
+        conn.close()
+        return jsonify({"error": "Incorrect PIN."}), 403
+    audit = conn.execute(
+        "SELECT id FROM deletion_audit WHERE alert_id=? AND confirm_code=? AND status='pending'",
+        (alert_id, code)
+    ).fetchone()
+    if not audit:
+        conn.close()
+        return jsonify({"error": "Invalid code or no pending request found for this alert."}), 404
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute("UPDATE deletion_audit SET status='approved' WHERE id=?", (audit["id"],))
+    conn.execute("UPDATE alerts SET is_deleted=1, deleted_at=? WHERE id=?", (now, alert_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/deletion-requests", methods=["GET"])
+def get_deletion_requests():
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT da.id, da.created_at, da.alert_id, da.requested_by, da.reason, da.status,
+               a.alert_type, a.alert_message
+        FROM deletion_audit da
+        LEFT JOIN alerts a ON da.alert_id = a.id
+        ORDER BY da.created_at DESC
+    """).fetchall()
+    conn.close()
+    return jsonify({"requests": [dict(r) for r in rows]})
 
 @app.route("/api/seed", methods=["POST"])
 def seed_data():

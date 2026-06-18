@@ -636,6 +636,12 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       </div>
     </div>
     <div id="alerts-list" style="margin-top:16px;"></div>
+
+    <div id="deletion-requests-section" style="display:none;margin-top:28px;">
+      <h3 style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--amber);">Deletion Requests — Audit Log</h3>
+      <div id="deletion-requests-list"></div>
+    </div>
+
     <div class="card" style="margin-top:20px;background:#F8F9FA;">
       <p style="font-size:13px;color:var(--muted);line-height:1.7;">
         <strong style="color:var(--text);">Why this log is locked:</strong> Alert records require agreement from multiple authorized parties before deletion is allowed.
@@ -643,6 +649,54 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       </p>
     </div>
   </section>
+
+  <!-- ── DELETION REQUEST MODAL ─────────────────────────────────────────────── -->
+  <div id="deletion-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;padding:24px;">
+    <div style="background:white;border-radius:12px;padding:28px;max-width:460px;width:100%;margin:0 auto;">
+      <h2 style="font-size:17px;color:var(--navy);margin-bottom:6px;">Request Alert Deletion</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Your request will be permanently logged. A confirmation code will be issued — a second step with PIN verification is required to complete deletion.</p>
+
+      <div id="deletion-request-form">
+        <label style="font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:6px;">Reason for deletion <span style="color:var(--red);">*</span></label>
+        <textarea id="deletion-reason" placeholder="Explain why this alert should be removed from the active log…"
+          style="width:100%;min-height:90px;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);font-family:inherit;resize:vertical;margin-bottom:16px;"></textarea>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="submitDeletionRequest()">Submit Request</button>
+          <button class="btn btn-secondary" onclick="closeDeletionModal()">Cancel</button>
+        </div>
+        <p id="deletion-request-error" style="color:var(--red);font-size:13px;margin-top:10px;display:none;"></p>
+      </div>
+
+      <div id="deletion-code-view" style="display:none;">
+        <div style="background:#FEF9E7;border:2px solid var(--amber);border-radius:8px;padding:16px;margin-bottom:16px;">
+          <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--amber);margin-bottom:8px;">Save this code — shown once only</p>
+          <div id="deletion-code-display" style="font-size:32px;font-weight:800;letter-spacing:6px;color:var(--text);font-family:monospace;"></div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">This code is required to confirm deletion. Enter it along with your PIN in the Deletion Requests section below. Your request has been permanently logged.</p>
+        <button class="btn btn-secondary" onclick="closeDeletionModal()">Done — I've saved my code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DELETION CONFIRM MODAL ─────────────────────────────────────────────── -->
+  <div id="deletion-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;padding:24px;">
+    <div style="background:white;border-radius:12px;padding:28px;max-width:420px;width:100%;margin:0 auto;">
+      <h2 style="font-size:17px;color:var(--red);margin-bottom:6px;">Confirm Deletion</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Enter the confirmation code from your request and your PIN to complete deletion. This action cannot be undone — the audit record remains permanently.</p>
+      <input type="hidden" id="confirm-alert-id">
+      <label style="font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:4px;">Confirmation code</label>
+      <input type="text" id="confirm-code-input" placeholder="e.g. A3F9C1" maxlength="6"
+        style="width:100%;padding:10px 14px;font-size:20px;font-family:monospace;letter-spacing:4px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;text-transform:uppercase;">
+      <label style="font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:4px;">Your PIN</label>
+      <input type="password" id="confirm-pin-input" placeholder="4-digit PIN" maxlength="4"
+        style="width:100%;padding:10px 14px;font-size:18px;font-family:monospace;letter-spacing:4px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;">
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" style="background:var(--red);border-color:var(--red);" onclick="submitDeletionConfirm()">Confirm Deletion</button>
+        <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+      </div>
+      <p id="confirm-error" style="color:var(--red);font-size:13px;margin-top:10px;display:none;"></p>
+    </div>
+  </div>
 
 </main>
 
@@ -2634,9 +2688,16 @@ async function loadAlerts() {
           Logged ${formatDate(a.created_at)}
           ${a.entry_date ? ` · Entry from ${a.entry_date.slice(0,10)}` : ''}
         </div>
-        <div class="lock-explain">🔒 Locked · Deletion requires multi-party agreement</div>
+        <div class="lock-explain" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span>🔒 Locked · Deletion requires multi-party agreement</span>
+          <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;border-color:var(--muted);color:var(--muted);"
+            onclick="openDeletionModal(${a.id})">Request Deletion</button>
+        </div>
       </div>`;
     list.appendChild(el);
+  }
+
+  loadDeletionRequests();
   });
 }
 
@@ -2708,6 +2769,99 @@ async function seedData() {
   loadCheckin();
   loadAlertBadge();
   setTimeout(() => { btn.textContent = 'Load sample data (14 days)'; btn.disabled = false; }, 2000);
+}
+
+// ── Deletion request UI ───────────────────────────────────────────────────────
+let deletionTargetId = null;
+
+function openDeletionModal(alertId) {
+  deletionTargetId = alertId;
+  document.getElementById('deletion-reason').value = '';
+  document.getElementById('deletion-request-error').style.display = 'none';
+  document.getElementById('deletion-request-form').style.display = 'block';
+  document.getElementById('deletion-code-view').style.display = 'none';
+  document.getElementById('deletion-modal').style.display = 'block';
+}
+
+function closeDeletionModal() {
+  document.getElementById('deletion-modal').style.display = 'none';
+  loadDeletionRequests();
+}
+
+async function submitDeletionRequest() {
+  const reason = document.getElementById('deletion-reason').value.trim();
+  const errEl  = document.getElementById('deletion-request-error');
+  if (!reason) { errEl.textContent = 'A reason is required.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  const r = await fetch(`/api/alerts/${deletionTargetId}/delete-request`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({requested_by: 'caregiver', reason})
+  });
+  const d = await r.json();
+  if (!d.success) { errEl.textContent = d.error || 'Error submitting request.'; errEl.style.display = 'block'; return; }
+  document.getElementById('deletion-code-display').textContent = d.confirm_code;
+  document.getElementById('deletion-request-form').style.display = 'none';
+  document.getElementById('deletion-code-view').style.display = 'block';
+}
+
+function openConfirmModal(alertId) {
+  document.getElementById('confirm-alert-id').value = alertId;
+  document.getElementById('confirm-code-input').value = '';
+  document.getElementById('confirm-pin-input').value = '';
+  document.getElementById('confirm-error').style.display = 'none';
+  document.getElementById('deletion-confirm-modal').style.display = 'block';
+}
+
+function closeConfirmModal() {
+  document.getElementById('deletion-confirm-modal').style.display = 'none';
+}
+
+async function submitDeletionConfirm() {
+  const alertId = document.getElementById('confirm-alert-id').value;
+  const code    = document.getElementById('confirm-code-input').value.trim().toUpperCase();
+  const pin     = document.getElementById('confirm-pin-input').value.trim();
+  const errEl   = document.getElementById('confirm-error');
+  if (!code || !pin) { errEl.textContent = 'Both fields are required.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  const r = await fetch(`/api/alerts/${alertId}/delete-confirm`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({confirm_code: code, pin})
+  });
+  const d = await r.json();
+  if (!d.success) { errEl.textContent = d.error || 'Confirmation failed.'; errEl.style.display = 'block'; return; }
+  closeConfirmModal();
+  loadAlerts();
+}
+
+async function loadDeletionRequests() {
+  const r = await fetch('/api/deletion-requests');
+  const d = await r.json();
+  const section = document.getElementById('deletion-requests-section');
+  const list    = document.getElementById('deletion-requests-list');
+  if (!d.requests || d.requests.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = '';
+  const STATUS_COLOR = { pending:'var(--amber)', approved:'var(--green)', denied:'var(--muted)' };
+  const STATUS_LABEL = { pending:'Pending', approved:'Approved — deleted', denied:'Denied' };
+  d.requests.forEach(req => {
+    const el = document.createElement('div');
+    el.style.cssText = 'background:white;border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow);';
+    const statusColor = STATUS_COLOR[req.status] || 'var(--muted)';
+    const statusLabel = STATUS_LABEL[req.status] || req.status;
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div>
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:${statusColor};">${statusLabel}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:8px;">${req.created_at ? req.created_at.slice(0,16) : ''}</span>
+        </div>
+        ${req.status === 'pending' ? `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;border-color:var(--red);color:var(--red);" onclick="openConfirmModal(${req.alert_id})">Confirm Deletion</button>` : ''}
+      </div>
+      <p style="font-size:13px;margin-top:6px;"><strong>Alert:</strong> ${escHtml(req.alert_message || '—')}</p>
+      <p style="font-size:13px;color:var(--muted);margin-top:4px;"><strong>Reason:</strong> ${escHtml(req.reason || '—')}</p>`;
+    list.appendChild(el);
+  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
