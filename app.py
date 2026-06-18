@@ -1302,7 +1302,7 @@ def get_patterns():
     cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     conn   = get_db()
     rows   = conn.execute(
-        "SELECT rating, created_at FROM caregiver_wellbeing WHERE created_at >= ? ORDER BY created_at ASC",
+        "SELECT rating, notes, created_at FROM caregiver_wellbeing WHERE created_at >= ? ORDER BY created_at ASC",
         (cutoff,)
     ).fetchall()
     conn.close()
@@ -1325,7 +1325,7 @@ def get_patterns():
             "avg": avg,
             "count": len(ratings),
             "trend": trend,
-            "ratings": [{"date": r["created_at"][:10], "rating": r["rating"]} for r in rows]
+            "ratings": [{"date": r["created_at"][:10], "rating": r["rating"], "notes": r["notes"]} for r in rows]
         }
 
     return jsonify({"patterns": patterns, "caregiver_wellbeing": wellbeing})
