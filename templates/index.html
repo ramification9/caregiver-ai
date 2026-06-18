@@ -1458,6 +1458,28 @@ function stopRecording() {
 // ── Submit note ───────────────────────────────────────────────────────────────
 async function submitNote() {
   const note = document.getElementById('note-input').value.trim();
+
+  // Caregiver check-in only — no patient note required
+  if (!note && selectedRating) {
+    const cgNote = (document.getElementById('caregiver-note-input').value || '').trim();
+    try {
+      await fetch('/api/caregiver-rating', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({rating: selectedRating, notes: cgNote || null})
+      });
+    } catch(e) {}
+    selectedRating = null;
+    document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('caregiver-note-input').value = '';
+    document.getElementById('caregiver-note-area').style.display = 'none';
+    const btn = document.getElementById('submit-btn');
+    btn.textContent = 'Check-in saved ✓';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = 'Log Entry'; btn.disabled = false; }, 2000);
+    return;
+  }
+
   if (!note) {
     const inp = document.getElementById('note-input');
     inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
