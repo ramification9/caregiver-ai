@@ -411,6 +411,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 
     <div class="card card-caregiver-entry">
       <div class="card-label" style="color:var(--green);">Step 2 — Your Check-In</div>
+      <div id="wellbeing-summary" style="display:none;background:#F0FAF4;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text);line-height:1.5;"></div>
       <p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">
         How are you holding up today?
         <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;">Optional</span>
@@ -1192,6 +1193,7 @@ async function loadPatient() {
     currentPatient = pd.patient;
     updatePatientUI();
     loadCheckin();
+    loadWellbeingSummary();
     loadLastEntry();
   } else {
     openPatientSetup();
@@ -1337,6 +1339,7 @@ function showSection(name) {
   document.querySelectorAll('nav button')[idx]?.classList.add('active');
 
   if (name !== 'summary') document.getElementById('print-btn').style.display = 'none';
+  if (name === 'log')         loadWellbeingSummary();
   if (name === 'history')     { historyOffset = 0; loadHistory(false); }
   if (name === 'medications') loadMedications();
   if (name === 'patterns')    loadPatterns();
@@ -1357,6 +1360,30 @@ async function loadCheckin() {
   } catch(e) {
     document.getElementById('checkin-greeting').textContent = 'Welcome back. How are things going today?';
   }
+}
+
+// ── Caregiver well-being summary (Log Today card) ────────────────────────────
+async function loadWellbeingSummary() {
+  const el = document.getElementById('wellbeing-summary');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/patterns?days=7');
+    const d = await r.json();
+    const wb = d.caregiver_wellbeing;
+    if (!wb) { el.style.display = 'none'; return; }
+    const color = RATING_COLORS[Math.round(wb.avg)] || '#888';
+    const label = RATING_LABELS[Math.round(wb.avg)] || '';
+    const trendText = wb.trend === 'improving' ? ' · ↑ Improving'
+                    : wb.trend === 'declining'  ? ' · ↓ Declining'
+                    : wb.trend === 'stable'     ? ' · → Stable' : '';
+    const dots = wb.ratings.slice(-7).map(r =>
+      `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${RATING_COLORS[r.rating]||'#ccc'};margin:1px 2px;" title="${r.date}: ${RATING_LABELS[r.rating]}"></span>`
+    ).join('');
+    el.style.display = 'block';
+    el.innerHTML = `<span style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);">Your last 7 days</span><br>
+      <span style="color:${color};font-weight:600;">${label} (${wb.avg}/5)</span><span style="color:#888;">${trendText} · ${wb.count} day${wb.count !== 1 ? 's' : ''} rated</span>
+      <div style="margin-top:5px;">${dots}</div>`;
+  } catch(e) { el.style.display = 'none'; }
 }
 
 // ── Caregiver rating ─────────────────────────────────────────────────────────
@@ -2016,36 +2043,6 @@ async function loadPatterns() {
   const list = document.getElementById('patterns-list');
   list.innerHTML = '';
 
-  // ── Caregiver well-being card ──
-  const wb = d.caregiver_wellbeing;
-  if (wb) {
-    const avgRating = Math.round(wb.avg);
-    const color = RATING_COLORS[avgRating] || '#888';
-    const label = RATING_LABELS[avgRating] || '';
-    const trendText = wb.trend === 'improving' ? '↑ Improving'
-                    : wb.trend === 'declining'  ? '↓ Declining'
-                    : wb.trend === 'stable'     ? '→ Stable' : '';
-    const trendColor = wb.trend === 'improving' ? '#2E7D32'
-                     : wb.trend === 'declining'  ? '#C62828' : '#888';
-    const dots = wb.ratings.slice(-7).map(r =>
-      `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${RATING_COLORS[r.rating]||'#ccc'};margin:1px;" title="${r.date}: ${RATING_LABELS[r.rating]}"></span>`
-    ).join('');
-    const wbEl = document.createElement('div');
-    wbEl.className = 'pattern-card';
-    wbEl.style.borderLeft = `4px solid ${color}`;
-    wbEl.innerHTML = `
-      <div class="pattern-icon" style="font-size:22px;">🧡</div>
-      <div class="pattern-body">
-        <h3>Your well-being — last 7 days</h3>
-        <p>Average: <strong style="color:${color};">${label} (${wb.avg}/5)</strong>
-          ${trendText ? `&nbsp;·&nbsp;<span style="color:${trendColor};font-weight:600;">${trendText}</span>` : ''}
-          &nbsp;·&nbsp; ${wb.count} day${wb.count !== 1 ? 's' : ''} rated
-        </p>
-        <div style="margin-top:6px;">${dots}</div>
-      </div>`;
-    list.appendChild(wbEl);
-  }
-
   // ── AI correction visibility card ──
   if (cs.total_entries > 0) {
     const corrEl = document.createElement('div');
@@ -2065,7 +2062,7 @@ async function loadPatterns() {
   }
 
   // ── Patient concern patterns ──
-  if (d.patterns.length === 0 && !wb && cs.total_entries === 0) {
+  if (d.patterns.length === 0 && cs.total_entries === 0) {
     list.innerHTML = '<div class="no-patterns">No patterns yet. Keep logging — patterns appear after 3 or more entries in a week.</div>';
     return;
   }
