@@ -1461,13 +1461,22 @@ async function submitNote() {
     const r = await fetch('/api/entry', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({note, caregiver_rating: selectedRating})
+      body: JSON.stringify({note})
     });
     const d = await r.json();
     if (d.error) { alert(d.error); return; }
 
     lastEntryId = d.id;
     lastTags    = d.extraction.tags;
+
+    // Save caregiver rating separately — not attached to the patient entry
+    if (selectedRating) {
+      fetch('/api/caregiver-rating', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({rating: selectedRating})
+      }).catch(() => {});
+    }
 
     if (d.extraction.emergency) {
       showEmergencyOverlay(d.extraction);

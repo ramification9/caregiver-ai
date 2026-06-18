@@ -98,6 +98,11 @@ def init_db():
             response    TEXT NOT NULL,
             wanted_support INTEGER DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS caregiver_wellbeing (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at  TEXT DEFAULT (datetime('now','localtime')),
+            rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5)
+        );
     """)
     conn.commit()
     conn.close()
@@ -124,6 +129,14 @@ def migrate_db():
         conn.commit()
     if "security_answer_hash" not in cg_cols:
         conn.execute("ALTER TABLE caregivers ADD COLUMN security_answer_hash TEXT DEFAULT NULL")
+        conn.commit()
+    wb_tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='caregiver_wellbeing'").fetchone()
+    if not wb_tables:
+        conn.execute("""CREATE TABLE caregiver_wellbeing (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at  TEXT DEFAULT (datetime('now','localtime')),
+            rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5)
+        )""")
         conn.commit()
     conn.close()
 
@@ -1150,6 +1163,21 @@ def save_caregiver_checkin():
     conn.close()
     return jsonify({"success": True})
 
+@app.route("/api/caregiver-rating", methods=["POST"])
+def save_caregiver_rating():
+    data = request.get_json()
+    try:
+        rating = int(data.get("rating"))
+        if rating < 1 or rating > 5:
+            raise ValueError
+    except (ValueError, TypeError):
+        return jsonify({"error": "Rating must be 1–5"}), 400
+    conn = get_db()
+    conn.execute("INSERT INTO caregiver_wellbeing (rating) VALUES (?)", (rating,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
 @app.route("/api/checkin", methods=["GET"])
 def checkin():
     return jsonify(build_checkin())
@@ -1167,21 +1195,11 @@ def save_entry():
     patient_row = conn.execute("SELECT name FROM patients LIMIT 1").fetchone()
     patient_name = patient_row["name"] if patient_row else None
 
-    caregiver_rating = data.get("caregiver_rating")
-    if caregiver_rating is not None:
-        try:
-            caregiver_rating = int(caregiver_rating)
-            if caregiver_rating < 1 or caregiver_rating > 5:
-                caregiver_rating = None
-        except (ValueError, TypeError):
-            caregiver_rating = None
-
     cur = conn.execute(
-        "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase, caregiver_rating) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase) VALUES (?, ?, ?, ?)",
         (note, json.dumps(extraction["tags"]),
          1 if extraction["emergency"] else 0,
-         extraction.get("emergency_phrase"),
-         caregiver_rating)
+         extraction.get("emergency_phrase"))
     )
     entry_id = cur.lastrowid
 
@@ -1272,18 +1290,18 @@ def get_patterns():
     threshold = int(request.args.get("threshold", 3))
     patterns  = detect_patterns(days, threshold)
 
-    # Caregiver well-being trend
+    # Caregiver well-being trend — separate table, no patient data
     cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     conn   = get_db()
     rows   = conn.execute(
-        "SELECT caregiver_rating, created_at FROM entries WHERE created_at >= ? AND caregiver_rating IS NOT NULL ORDER BY created_at ASC",
+        "SELECT rating, created_at FROM caregiver_wellbeing WHERE created_at >= ? ORDER BY created_at ASC",
         (cutoff,)
     ).fetchall()
     conn.close()
 
     wellbeing = None
     if rows:
-        ratings = [r["caregiver_rating"] for r in rows]
+        ratings = [r["rating"] for r in rows]
         avg     = round(sum(ratings) / len(ratings), 1)
         trend   = None
         if len(ratings) >= 4:
@@ -1299,7 +1317,7 @@ def get_patterns():
             "avg": avg,
             "count": len(ratings),
             "trend": trend,
-            "ratings": [{"date": r["created_at"][:10], "rating": r["caregiver_rating"]} for r in rows]
+            "ratings": [{"date": r["created_at"][:10], "rating": r["rating"]} for r in rows]
         }
 
     return jsonify({"patterns": patterns, "caregiver_wellbeing": wellbeing})
