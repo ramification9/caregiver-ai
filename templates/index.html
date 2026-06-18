@@ -297,9 +297,9 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .rec-lockout p { color:var(--muted); font-size:14px; }
 .rec-lockout .rec-countdown { font-size:28px; font-weight:700; color:var(--navy); margin:10px 0; }
 
-#patient-setup { position:fixed; inset:0; background:var(--navy); z-index:3000; display:none; align-items:center; justify-content:center; padding:24px; }
-#patient-setup.open { display:flex; }
-.setup-box { background:white; border-radius:12px; padding:36px; max-width:480px; width:100%; }
+#patient-setup { position:fixed; inset:0; background:var(--navy); z-index:3000; display:none; overflow-y:auto; padding:24px; }
+#patient-setup.open { display:block; }
+.setup-box { background:white; border-radius:12px; padding:36px; max-width:480px; width:100%; margin:0 auto; }
 .setup-box h2 { color:var(--navy); font-size:22px; margin-bottom:8px; }
 .setup-box .setup-intro { color:var(--muted); font-size:14px; margin-bottom:28px; line-height:1.7; }
 .setup-field { margin-bottom:24px; }
@@ -315,6 +315,9 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 #patient-name-display:hover, #caregiver-name-display:hover { opacity:1; }
 .header-sep { font-size:13px; opacity:0.35; color:white; }
 
+.card-label { font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-bottom:14px; color:var(--navy); }
+.card-patient { border-left:4px solid var(--navy); }
+.card-caregiver-entry { border-left:4px solid var(--green); }
 .rating-btn { flex:1; padding:8px 4px; border:2px solid var(--border); border-radius:8px; background:white; cursor:pointer; font-size:15px; font-weight:700; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; transition:all 0.15s; }
 .rating-btn span { font-size:10px; font-weight:400; text-transform:uppercase; letter-spacing:0.4px; }
 .rating-btn:hover { border-color:var(--navy); color:var(--navy); }
@@ -391,31 +394,35 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       <div class="context-tag" id="checkin-context"></div>
     </div>
 
-    <div class="card">
-      <h2>What happened today?</h2>
-      <p style="font-size:14px;color:var(--muted);margin-bottom:14px;">
-        Write or speak naturally. No forms. Just describe what you observed — sleep, mood, meals, medications, appointments, anything that stood out.
-      </p>
+    <div class="card card-patient">
+      <div class="card-label">Patient Observation</div>
       <textarea id="note-input" placeholder="He didn't sleep again last night. Seemed on edge this morning and skipped his PT appointment. Refused his medication at breakfast. Ate a little at dinner…"></textarea>
-
-      <div style="margin:12px 0 4px;">
-        <span style="font-size:13px;font-weight:600;color:var(--text);">How are you holding up today?</span>
-        <span style="font-size:12px;color:var(--muted);margin-left:6px;">Optional</span>
+      <p style="font-size:13px;color:var(--muted);margin-top:10px;">
+        Write or speak naturally — sleep, mood, meals, medications, appointments, anything that stood out.
+      </p>
+      <div class="input-row" style="margin-top:14px;">
+        <button class="btn btn-voice" id="voice-btn" title="Tap to speak">
+          <span id="voice-icon">🎙</span>
+          <span id="voice-label">Speak</span>
+        </button>
+        <span id="char-count">0 characters</span>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;" id="caregiver-rating-row">
+    </div>
+
+    <div class="card card-caregiver-entry">
+      <div class="card-label" style="color:var(--green);">Your Check-In</div>
+      <p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">
+        How are you holding up today?
+        <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;">Optional</span>
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:18px;" id="caregiver-rating-row">
         <button class="rating-btn" data-rating="1" onclick="selectRating(1)" title="Struggling">1<span>Struggling</span></button>
         <button class="rating-btn" data-rating="2" onclick="selectRating(2)" title="Hard day">2<span>Hard</span></button>
         <button class="rating-btn" data-rating="3" onclick="selectRating(3)" title="Managing">3<span>Managing</span></button>
         <button class="rating-btn" data-rating="4" onclick="selectRating(4)" title="Good">4<span>Good</span></button>
         <button class="rating-btn" data-rating="5" onclick="selectRating(5)" title="Strong">5<span>Strong</span></button>
       </div>
-
-      <div class="input-row">
-        <button class="btn btn-voice" id="voice-btn" title="Tap to speak">
-          <span id="voice-icon">🎙</span>
-          <span id="voice-label">Speak</span>
-        </button>
-        <span id="char-count">0 characters</span>
+      <div style="display:flex;justify-content:flex-end;">
         <button class="btn btn-primary" id="submit-btn" onclick="submitNote()">Log Entry</button>
       </div>
     </div>
