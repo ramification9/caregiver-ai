@@ -50,7 +50,7 @@ Projected live deployment: **October 2026**
 - Summary format refined based on whether clinicians find it useful
 - "While you wait" emergency guidance submitted for clinical review and updated
 
-**February 2026 — March 2027 — Formal Validation**
+**February 2027 — March 2027 — Formal Validation**
 - Smart 40 stress testing completed formally with real user data
 - F1 score, recall, and precision calculated for extraction and emergency detection
 - Bias review conducted — does the tool perform equally across different caregiver demographics, phrasing styles, and veteran populations?

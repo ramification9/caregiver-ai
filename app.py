@@ -6,6 +6,9 @@ import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
 import os
+import uuid
+import hashlib
+import secrets
 
 app = Flask(__name__)
 
@@ -50,6 +53,15 @@ def init_db():
             is_veteran          INTEGER DEFAULT 0,
             local_crisis_number TEXT DEFAULT NULL
         );
+        CREATE TABLE IF NOT EXISTS caregivers (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at        TEXT DEFAULT (datetime('now','localtime')),
+            name              TEXT NOT NULL,
+            relationship      TEXT DEFAULT NULL,
+            caregiver_id      TEXT NOT NULL UNIQUE,
+            pin_hash          TEXT DEFAULT NULL,
+            auto_lock_minutes INTEGER DEFAULT 15
+        );
 
         CREATE TABLE IF NOT EXISTS deletion_audit (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,6 +91,13 @@ def init_db():
             status      TEXT NOT NULL,
             notes       TEXT DEFAULT NULL
         );
+        CREATE TABLE IF NOT EXISTS caregiver_checkins (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at  TEXT DEFAULT (datetime('now','localtime')),
+            entry_id    INTEGER REFERENCES entries(id),
+            response    TEXT NOT NULL,
+            wanted_support INTEGER DEFAULT 0
+        );
     """)
     conn.commit()
     conn.close()
@@ -86,9 +105,25 @@ def init_db():
 def migrate_db():
     """Add columns introduced after initial schema — safe to run on every start."""
     conn = get_db()
-    cols = [row[1] for row in conn.execute("PRAGMA table_info(entries)").fetchall()]
-    if "custom_tags" not in cols:
+    entry_cols = [row[1] for row in conn.execute("PRAGMA table_info(entries)").fetchall()]
+    if "custom_tags" not in entry_cols:
         conn.execute("ALTER TABLE entries ADD COLUMN custom_tags TEXT DEFAULT NULL")
+        conn.commit()
+    if "caregiver_rating" not in entry_cols:
+        conn.execute("ALTER TABLE entries ADD COLUMN caregiver_rating INTEGER DEFAULT NULL")
+        conn.commit()
+    cg_cols = [row[1] for row in conn.execute("PRAGMA table_info(caregivers)").fetchall()]
+    if "pin_hash" not in cg_cols:
+        conn.execute("ALTER TABLE caregivers ADD COLUMN pin_hash TEXT DEFAULT NULL")
+        conn.commit()
+    if "auto_lock_minutes" not in cg_cols:
+        conn.execute("ALTER TABLE caregivers ADD COLUMN auto_lock_minutes INTEGER DEFAULT 15")
+        conn.commit()
+    if "security_question" not in cg_cols:
+        conn.execute("ALTER TABLE caregivers ADD COLUMN security_question TEXT DEFAULT NULL")
+        conn.commit()
+    if "security_answer_hash" not in cg_cols:
+        conn.execute("ALTER TABLE caregivers ADD COLUMN security_answer_hash TEXT DEFAULT NULL")
         conn.commit()
     conn.close()
 
@@ -679,7 +714,8 @@ def mock_generate_summary(days=14):
         "SELECT alert_type, alert_message, created_at FROM alerts WHERE created_at >= ? AND alert_type NOT IN ('pattern') ORDER BY created_at DESC",
         (cutoff,)
     ).fetchall()
-    patient = conn.execute("SELECT name, is_veteran FROM patients LIMIT 1").fetchone()
+    patient  = conn.execute("SELECT name, is_veteran FROM patients LIMIT 1").fetchone()
+    caregiver_row = conn.execute("SELECT name, relationship, caregiver_id FROM caregivers LIMIT 1").fetchone()
     conn.close()
 
     if not rows:
@@ -791,9 +827,48 @@ def mock_generate_summary(days=14):
         for m in meds
     ]
 
+    # Generate follow-up talking points for the appointment
+    follow_ups = []
+    med_names = [m["name"] for m in meds_list]
+    med_str   = ", ".join(med_names) if med_names else "current medications"
+
+    for c in concerns_list:
+        cat, count, pct = c["category"], c["count"], c["pct"]
+        if cat == "sleep" and count >= 3:
+            follow_ups.append(f"Sleep was disrupted in {count} of {total} entries ({pct}%) — ask about sleep medication or a sleep study.")
+        elif cat == "medication" and count >= 2:
+            follow_ups.append(f"Medication was refused {count} times — ask the prescriber whether {med_str} may need adjustment or if side effects are a factor.")
+        elif cat == "mood" and count >= 3:
+            follow_ups.append(f"Mood concerns were logged {count} times ({pct}%) — ask about mental health support options or a referral.")
+        elif cat == "physical" and count >= 2:
+            follow_ups.append(f"Physical health concerns came up {count} times — request a physical assessment at this visit.")
+        elif cat == "appointments" and count >= 2:
+            follow_ups.append(f"Appointments were missed {count} times — discuss whether telehealth or scheduling support would help.")
+        elif cat == "appetite" and count >= 3:
+            follow_ups.append(f"Appetite concerns appeared in {count} entries — ask about a nutrition assessment.")
+        elif cat == "behavior" and count >= 2:
+            follow_ups.append(f"Behavioral concerns were noted {count} times — ask about a behavioral health evaluation.")
+
+    for flag in emergency_flags:
+        if flag["type"] == "physical":
+            follow_ups.append(f"A fall or physical emergency was logged on {flag['date']} — ask about a fall risk assessment and home safety evaluation.")
+        elif flag["type"] == "mental":
+            follow_ups.append(f"A mental health crisis was logged on {flag['date']} — confirm the mental health provider is aware and follow up on crisis plan.")
+        elif flag["type"] == "third_party":
+            follow_ups.append(f"A violent incident was logged on {flag['date']} — discuss safety planning with the care team.")
+
+    caregiver_info = None
+    if caregiver_row:
+        caregiver_info = {
+            "name":         caregiver_row["name"],
+            "relationship": caregiver_row["relationship"],
+            "caregiver_id": caregiver_row["caregiver_id"]
+        }
+
     return {
-        "patient": {"name": patient_name, "is_veteran": is_veteran},
-        "period":  {"start": first_date, "end": last_date, "days": days},
+        "patient":   {"name": patient_name, "is_veteran": is_veteran},
+        "caregiver": caregiver_info,
+        "period":    {"start": first_date, "end": last_date, "days": days},
         "total_entries":    total,
         "emergency_count":  emergency_count,
         "medications":      meds_list,
@@ -801,6 +876,7 @@ def mock_generate_summary(days=14):
         "positives":        positives_list,
         "emergency_flags":  emergency_flags,
         "custom_topics":    custom_list,
+        "follow_ups":       follow_ups,
         "sandbox":          SANDBOX_MODE,
         "entries_reviewed": total,
         "date_range":       f"{first_date} to {last_date}"
@@ -851,6 +927,229 @@ def save_patient():
     conn.close()
     return jsonify({"success": True})
 
+def _hash_pin(pin, salt=None):
+    if salt is None:
+        salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac('sha256', pin.encode(), salt.encode(), 200_000)
+    return f"{salt}:{key.hex()}"
+
+def _verify_pin(pin, stored):
+    try:
+        salt, _ = stored.split(':', 1)
+        return _hash_pin(pin, salt) == stored
+    except Exception:
+        return False
+
+def _hash_answer(answer, salt=None):
+    normalized = answer.strip().lower()
+    if salt is None:
+        salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac('sha256', normalized.encode(), salt.encode(), 200_000)
+    return f"{salt}:{key.hex()}"
+
+def _verify_answer(answer, stored):
+    try:
+        salt, _ = stored.split(':', 1)
+        return _hash_answer(answer, salt) == stored
+    except Exception:
+        return False
+
+# In-memory attempt trackers (single-user local app)
+_pin_attempts      = {"count": 0, "locked_until": None}
+_recovery_attempts = {"count": 0, "locked_until": None}
+
+def _check_locked(tracker):
+    lu = tracker["locked_until"]
+    if lu and datetime.now() < lu:
+        secs = int((lu - datetime.now()).total_seconds())
+        return True, secs
+    if lu and datetime.now() >= lu:
+        tracker["count"] = 0
+        tracker["locked_until"] = None
+    return False, 0
+
+def _recovery_locked():
+    return _check_locked(_recovery_attempts)
+
+@app.route("/api/pin/status", methods=["GET"])
+def pin_status():
+    conn = get_db()
+    row = conn.execute("SELECT pin_hash, auto_lock_minutes FROM caregivers LIMIT 1").fetchone()
+    conn.close()
+    if not row or not row["pin_hash"]:
+        return jsonify({"pin_set": False})
+    return jsonify({"pin_set": True, "auto_lock_minutes": row["auto_lock_minutes"] or 15})
+
+@app.route("/api/pin/set", methods=["POST"])
+def set_pin():
+    data = request.get_json()
+    pin  = (data.get("pin") or "").strip()
+    if not pin.isdigit() or len(pin) < 4:
+        return jsonify({"error": "PIN must be at least 4 digits."}), 400
+    auto_lock = int(data.get("auto_lock_minutes") or 15)
+    hashed = _hash_pin(pin)
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM caregivers LIMIT 1").fetchone()
+    if existing:
+        conn.execute("UPDATE caregivers SET pin_hash=?, auto_lock_minutes=? WHERE id=?",
+                     (hashed, auto_lock, existing["id"]))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/pin/verify", methods=["POST"])
+def verify_pin():
+    locked, secs = _check_locked(_pin_attempts)
+    if locked:
+        return jsonify({"valid": False, "locked": True, "seconds": secs}), 429
+
+    data = request.get_json()
+    pin  = (data.get("pin") or "").strip()
+    conn = get_db()
+    row  = conn.execute("SELECT pin_hash FROM caregivers LIMIT 1").fetchone()
+    conn.close()
+    if not row or not row["pin_hash"]:
+        return jsonify({"valid": True})
+
+    if _verify_pin(pin, row["pin_hash"]):
+        _pin_attempts["count"] = 0
+        _pin_attempts["locked_until"] = None
+        return jsonify({"valid": True})
+
+    _pin_attempts["count"] += 1
+    remaining = 5 - _pin_attempts["count"]
+    if _pin_attempts["count"] >= 5:
+        _pin_attempts["locked_until"] = datetime.now() + timedelta(minutes=5)
+        return jsonify({"valid": False, "locked": True, "seconds": 300}), 429
+    return jsonify({"valid": False, "remaining": remaining})
+
+@app.route("/api/pin/question", methods=["GET"])
+def get_recovery_question():
+    conn = get_db()
+    row  = conn.execute("SELECT security_question FROM caregivers LIMIT 1").fetchone()
+    conn.close()
+    if not row or not row["security_question"]:
+        return jsonify({"question": None})
+    return jsonify({"question": row["security_question"]})
+
+@app.route("/api/pin/set-recovery", methods=["POST"])
+def set_recovery():
+    data     = request.get_json()
+    question = (data.get("question") or "").strip()
+    answer   = (data.get("answer") or "").strip()
+    if not question or not answer:
+        return jsonify({"error": "Question and answer are required."}), 400
+    hashed = _hash_answer(answer)
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM caregivers LIMIT 1").fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE caregivers SET security_question=?, security_answer_hash=? WHERE id=?",
+            (question, hashed, existing["id"])
+        )
+        conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/pin/reset", methods=["POST"])
+def reset_pin():
+    locked, secs = _recovery_locked()
+    if locked:
+        return jsonify({"error": f"Too many attempts. Try again in {secs} seconds.", "locked": True, "seconds": secs}), 429
+
+    data       = request.get_json()
+    answer     = (data.get("answer") or "").strip()
+    new_pin    = (data.get("new_pin") or "").strip()
+    check_only = data.get("check_only", False)
+
+    conn = get_db()
+    row  = conn.execute("SELECT id, security_answer_hash FROM caregivers LIMIT 1").fetchone()
+    conn.close()
+
+    if not row or not row["security_answer_hash"]:
+        return jsonify({"error": "No recovery question set."}), 400
+
+    if not _verify_answer(answer, row["security_answer_hash"]):
+        _recovery_attempts["count"] += 1
+        remaining = 5 - _recovery_attempts["count"]
+        if _recovery_attempts["count"] >= 5:
+            _recovery_attempts["locked_until"] = datetime.now() + timedelta(minutes=5)
+            return jsonify({"error": "Too many incorrect answers. Locked for 5 minutes.", "locked": True, "seconds": 300}), 429
+        return jsonify({"valid": False, "remaining": remaining})
+
+    # Answer is correct — reset attempt counter
+    _recovery_attempts["count"] = 0
+    _recovery_attempts["locked_until"] = None
+
+    if check_only:
+        return jsonify({"answer_valid": True})
+
+    if not new_pin or not new_pin.isdigit() or len(new_pin) < 4:
+        return jsonify({"error": "New PIN must be 4 digits."}), 400
+
+    hashed = _hash_pin(new_pin)
+    conn = get_db()
+    conn.execute("UPDATE caregivers SET pin_hash=? WHERE id=?", (hashed, row["id"]))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/caregiver", methods=["GET"])
+def get_caregiver():
+    conn = get_db()
+    row = conn.execute("SELECT * FROM caregivers LIMIT 1").fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"caregiver": None})
+    return jsonify({"caregiver": {
+        "id": row["id"],
+        "name": row["name"],
+        "relationship": row["relationship"],
+        "caregiver_id": row["caregiver_id"]
+    }})
+
+@app.route("/api/caregiver", methods=["POST"])
+def save_caregiver():
+    data = request.get_json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Caregiver name is required."}), 400
+    relationship = (data.get("relationship") or "").strip() or None
+    conn = get_db()
+    existing = conn.execute("SELECT id, caregiver_id FROM caregivers LIMIT 1").fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE caregivers SET name=?, relationship=? WHERE id=?",
+            (name, relationship, existing["id"])
+        )
+        cid = existing["caregiver_id"]
+    else:
+        cid = str(uuid.uuid4())
+        conn.execute(
+            "INSERT INTO caregivers (name, relationship, caregiver_id) VALUES (?,?,?)",
+            (name, relationship, cid)
+        )
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "caregiver_id": cid})
+
+@app.route("/api/caregiver-checkin", methods=["POST"])
+def save_caregiver_checkin():
+    data    = request.get_json()
+    entry_id = data.get("entry_id")
+    response = (data.get("response") or "").strip()
+    wanted_support = 1 if data.get("wanted_support") else 0
+    if not response:
+        return jsonify({"error": "Response required."}), 400
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO caregiver_checkins (entry_id, response, wanted_support) VALUES (?,?,?)",
+        (entry_id, response, wanted_support)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
 @app.route("/api/checkin", methods=["GET"])
 def checkin():
     return jsonify(build_checkin())
@@ -868,11 +1167,21 @@ def save_entry():
     patient_row = conn.execute("SELECT name FROM patients LIMIT 1").fetchone()
     patient_name = patient_row["name"] if patient_row else None
 
+    caregiver_rating = data.get("caregiver_rating")
+    if caregiver_rating is not None:
+        try:
+            caregiver_rating = int(caregiver_rating)
+            if caregiver_rating < 1 or caregiver_rating > 5:
+                caregiver_rating = None
+        except (ValueError, TypeError):
+            caregiver_rating = None
+
     cur = conn.execute(
-        "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase) VALUES (?, ?, ?, ?)",
+        "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase, caregiver_rating) VALUES (?, ?, ?, ?, ?)",
         (note, json.dumps(extraction["tags"]),
          1 if extraction["emergency"] else 0,
-         extraction.get("emergency_phrase"))
+         extraction.get("emergency_phrase"),
+         caregiver_rating)
     )
     entry_id = cur.lastrowid
 
@@ -915,7 +1224,7 @@ def get_entries():
     offset = int(request.args.get("offset", 0))
     conn   = get_db()
     rows   = conn.execute(
-        "SELECT id, created_at, raw_note, extracted_tags, corrected_tags, custom_tags, is_emergency_flagged FROM entries ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        "SELECT id, created_at, raw_note, extracted_tags, corrected_tags, custom_tags, is_emergency_flagged, caregiver_rating FROM entries ORDER BY created_at DESC LIMIT ? OFFSET ?",
         (limit, offset)
     ).fetchall()
     total = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
@@ -929,7 +1238,8 @@ def get_entries():
             "tags": json.loads(r["extracted_tags"] or "{}"),
             "corrected_tags": json.loads(r["corrected_tags"]) if r["corrected_tags"] else None,
             "custom_tags": json.loads(r["custom_tags"] or "[]"),
-            "is_emergency": bool(r["is_emergency_flagged"])
+            "is_emergency": bool(r["is_emergency_flagged"]),
+            "caregiver_rating": r["caregiver_rating"]
         } for r in rows],
         "total": total
     })
@@ -945,11 +1255,54 @@ def correct_entry(entry_id):
     conn.close()
     return jsonify({"success": True})
 
+@app.route("/api/corrections/stats", methods=["GET"])
+def correction_stats():
+    conn  = get_db()
+    total = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+    corrected = conn.execute(
+        "SELECT COUNT(*) FROM entries WHERE corrected_tags IS NOT NULL AND corrected_tags != 'null'"
+    ).fetchone()[0]
+    conn.close()
+    return jsonify({"total_entries": total, "corrected": corrected,
+                    "pct": round(corrected / total * 100) if total else 0})
+
 @app.route("/api/patterns", methods=["GET"])
 def get_patterns():
     days      = int(request.args.get("days", 7))
     threshold = int(request.args.get("threshold", 3))
-    return jsonify({"patterns": detect_patterns(days, threshold)})
+    patterns  = detect_patterns(days, threshold)
+
+    # Caregiver well-being trend
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    conn   = get_db()
+    rows   = conn.execute(
+        "SELECT caregiver_rating, created_at FROM entries WHERE created_at >= ? AND caregiver_rating IS NOT NULL ORDER BY created_at ASC",
+        (cutoff,)
+    ).fetchall()
+    conn.close()
+
+    wellbeing = None
+    if rows:
+        ratings = [r["caregiver_rating"] for r in rows]
+        avg     = round(sum(ratings) / len(ratings), 1)
+        trend   = None
+        if len(ratings) >= 4:
+            first_half = sum(ratings[:len(ratings)//2]) / (len(ratings)//2)
+            second_half = sum(ratings[len(ratings)//2:]) / (len(ratings) - len(ratings)//2)
+            if second_half - first_half >= 0.5:
+                trend = "improving"
+            elif first_half - second_half >= 0.5:
+                trend = "declining"
+            else:
+                trend = "stable"
+        wellbeing = {
+            "avg": avg,
+            "count": len(ratings),
+            "trend": trend,
+            "ratings": [{"date": r["created_at"][:10], "rating": r["caregiver_rating"]} for r in rows]
+        }
+
+    return jsonify({"patterns": patterns, "caregiver_wellbeing": wellbeing})
 
 @app.route("/api/summary", methods=["POST"])
 def generate_summary():

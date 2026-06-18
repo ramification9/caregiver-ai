@@ -187,6 +187,20 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .lock-icon { font-size: 18px; opacity: 0.5; flex-shrink: 0; }
 .lock-explain { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
+/* Resources */
+.resource-group { margin-bottom:24px; }
+.resource-group h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.resource-card { background:white; border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; display:flex; gap:14px; align-items:flex-start; box-shadow:var(--shadow); }
+.resource-card.contextual { border-left:3px solid var(--navy); }
+.resource-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+.resource-body h4 { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:2px; }
+.resource-body p { font-size:13px; color:var(--muted); margin-bottom:4px; line-height:1.5; }
+.resource-contact { font-size:13px; font-weight:700; color:var(--text); }
+/* Follow-up section in summary */
+.sum-followup-item { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; line-height:1.6; }
+.sum-followup-item:last-child { border-bottom:none; }
+.sum-followup-bullet { color:var(--navy); font-size:18px; flex-shrink:0; line-height:1.4; }
+
 /* Medications */
 .med-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px; box-shadow: var(--shadow); border-left: 4px solid var(--blue); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .med-card .med-name { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
@@ -206,6 +220,24 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .form-field input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; }
 .form-field input:focus { outline: none; border-color: var(--blue); }
 .required-star { color: var(--red); }
+
+#caregiver-checkin-overlay { display:none; position:fixed; inset:0; background:#1a3a4a; color:white; z-index:1100; align-items:center; justify-content:center; padding:24px; }
+#caregiver-checkin-overlay.open { display:flex; }
+.checkin-box { max-width:480px; width:100%; }
+.checkin-label { font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; opacity:0.6; margin-bottom:16px; }
+.checkin-question { font-size:26px; font-weight:800; line-height:1.3; margin-bottom:8px; }
+.checkin-name { font-size:16px; opacity:0.7; margin-bottom:36px; }
+.checkin-options { display:flex; flex-direction:column; gap:12px; margin-bottom:28px; }
+.checkin-btn { background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.2); color:white; padding:16px 20px; border-radius:10px; font-size:16px; font-weight:600; text-align:left; cursor:pointer; transition:all 0.2s; line-height:1.3; }
+.checkin-btn:hover { background:rgba(255,255,255,0.2); border-color:rgba(255,255,255,0.5); }
+.checkin-btn.support { border-color:rgba(255,200,100,0.6); }
+.checkin-btn.support:hover { background:rgba(255,200,100,0.15); }
+.checkin-resources { background:rgba(255,255,255,0.08); border-radius:10px; padding:20px; margin-bottom:20px; display:none; }
+.checkin-resources h4 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; opacity:0.7; margin-bottom:14px; }
+.checkin-resource-line { font-size:15px; margin-bottom:10px; line-height:1.5; }
+.checkin-resource-line strong { display:block; font-size:13px; opacity:0.7; font-weight:400; }
+.checkin-skip { background:none; border:none; color:rgba(255,255,255,0.4); font-size:13px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.checkin-skip:hover { color:rgba(255,255,255,0.7); }
 
 #emergency-overlay { display: none; position: fixed; inset: 0; background: #7B241C; color: white; z-index: 1000; overflow-y: auto; padding: 32px 24px; }
 .emergency-inner { max-width: 600px; margin: 0 auto; }
@@ -232,6 +264,39 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .correction-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
 
+#lock-screen { position:fixed; inset:0; background:var(--navy); z-index:5000; display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+#lock-screen.active { display:flex; }
+.lock-title { color:white; font-size:28px; font-weight:800; margin-bottom:6px; letter-spacing:0.5px; }
+.lock-sub { color:rgba(255,255,255,0.6); font-size:14px; margin-bottom:40px; }
+.pin-dots { display:flex; gap:16px; margin-bottom:36px; }
+.pin-dot { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.5); background:transparent; transition:background 0.15s; }
+.pin-dot.filled { background:white; border-color:white; }
+.pin-keypad { display:grid; grid-template-columns:repeat(3,80px); gap:12px; }
+.pin-key { height:80px; border-radius:50%; border:none; background:rgba(255,255,255,0.12); color:white; font-size:24px; font-weight:600; cursor:pointer; transition:background 0.15s; }
+.pin-key:hover { background:rgba(255,255,255,0.22); }
+.pin-key:active { background:rgba(255,255,255,0.35); }
+.pin-key.del { font-size:18px; }
+.lock-error { color:#FF6B6B; font-size:14px; margin-top:16px; min-height:20px; }
+.lock-name { color:rgba(255,255,255,0.5); font-size:13px; margin-bottom:32px; }
+.lock-forgot { color:rgba(255,255,255,0.45); font-size:13px; margin-top:20px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; border:none; background:none; }
+.lock-forgot:hover { color:rgba(255,255,255,0.75); }
+
+#recovery-screen { position:fixed; inset:0; background:var(--navy); z-index:5001; display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+#recovery-screen.active { display:flex; }
+.recovery-box { background:white; border-radius:12px; padding:32px; max-width:420px; width:100%; }
+.recovery-box h3 { color:var(--navy); font-size:20px; margin-bottom:6px; }
+.recovery-box .rec-sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
+.rec-question { background:var(--noted-bg); border-left:3px solid var(--navy); border-radius:6px; padding:12px 14px; font-size:15px; font-weight:600; color:var(--navy); margin-bottom:20px; }
+.rec-field { margin-bottom:16px; }
+.rec-field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--text); }
+.rec-field input { width:100%; padding:11px 13px; border:2px solid var(--border); border-radius:8px; font-size:15px; font-family:inherit; }
+.rec-field input:focus { outline:none; border-color:var(--blue); }
+.rec-error { color:var(--red); font-size:13px; margin-bottom:12px; min-height:18px; }
+.rec-lockout { text-align:center; padding:20px 0; }
+.rec-lockout .rec-lock-icon { font-size:40px; margin-bottom:12px; }
+.rec-lockout p { color:var(--muted); font-size:14px; }
+.rec-lockout .rec-countdown { font-size:28px; font-weight:700; color:var(--navy); margin:10px 0; }
+
 #patient-setup { position:fixed; inset:0; background:var(--navy); z-index:3000; display:none; align-items:center; justify-content:center; padding:24px; }
 #patient-setup.open { display:flex; }
 .setup-box { background:white; border-radius:12px; padding:36px; max-width:480px; width:100%; }
@@ -246,13 +311,47 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .veteran-btn { flex:1; padding:14px; border:2px solid var(--border); border-radius:8px; background:white; font-size:15px; font-weight:600; cursor:pointer; color:var(--text); transition:all 0.2s; text-align:center; }
 .veteran-btn:hover { border-color:var(--navy); }
 .veteran-btn.selected { border-color:var(--navy); background:var(--navy); color:white; }
-#patient-name-display { font-size:13px; opacity:0.8; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
-#patient-name-display:hover { opacity:1; }
+#patient-name-display, #caregiver-name-display { font-size:13px; opacity:0.8; cursor:pointer; text-decoration:underline; text-underline-offset:3px; color:white; }
+#patient-name-display:hover, #caregiver-name-display:hover { opacity:1; }
+.header-sep { font-size:13px; opacity:0.35; color:white; }
 
+.rating-btn { flex:1; padding:8px 4px; border:2px solid var(--border); border-radius:8px; background:white; cursor:pointer; font-size:15px; font-weight:700; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; transition:all 0.15s; }
+.rating-btn span { font-size:10px; font-weight:400; text-transform:uppercase; letter-spacing:0.4px; }
+.rating-btn:hover { border-color:var(--navy); color:var(--navy); }
+.rating-btn.selected[data-rating="1"] { background:#C62828; border-color:#C62828; color:white; }
+.rating-btn.selected[data-rating="2"] { background:#E65100; border-color:#E65100; color:white; }
+.rating-btn.selected[data-rating="3"] { background:#F9A825; border-color:#F9A825; color:#1a1a1a; }
+.rating-btn.selected[data-rating="4"] { background:#2E7D32; border-color:#2E7D32; color:white; }
+.rating-btn.selected[data-rating="5"] { background:#1565C0; border-color:#1565C0; color:white; }
 .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-@media print { .sandbox-bar, header, nav, .summary-controls, #summary-output ~ * { display: none !important; } #summary-output { display: block !important; border: none; font-size: 12px; } }
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: white !important; }
+  .sandbox-bar, header, nav, .summary-controls, #summary-meta,
+  #sec-log, #sec-history, #sec-medications, #sec-patterns,
+  #sec-resources, #sec-alerts, #correction-modal,
+  #patient-setup, #lock-screen, #recovery-screen,
+  #emergency-overlay { display: none !important; }
+  #sec-summary { display: block !important; padding: 0 !important; }
+  #summary-output { display: block !important; border: none !important; box-shadow: none !important; }
+  .sum-header { background: #1a2e4a !important; color: white !important; border-radius: 0 !important; padding: 20px 24px !important; }
+  .sum-header h3 { font-size: 16px !important; }
+  .sum-header p  { font-size: 11px !important; }
+  .sum-section { border: 1px solid #ddd !important; page-break-inside: avoid; }
+  .sum-section h4 { font-size: 10px !important; }
+  .sum-bar-label { font-size: 12px !important; min-width: 140px !important; }
+  .sum-bar-track { background: #eee !important; }
+  .sum-bar-fill  { background: #1a2e4a !important; }
+  .sum-bar-fill.positive { background: #2E7D32 !important; }
+  .sum-bar-pct   { font-size: 11px !important; }
+  .sum-med-pill  { background: #e8eef6 !important; color: #1a2e4a !important; border: 1px solid #b0c4de !important; font-size: 11px !important; }
+  .sum-followup-item { font-size: 12px !important; }
+  .sum-followup-bullet { color: #1a2e4a !important; }
+  .sum-footer { font-size: 10px !important; background: #f8f8f8 !important; }
+  #print-datestamp { display: block !important; }
+}
 @media (max-width: 500px) { nav button { padding: 12px 12px; font-size: 13px; } .emergency-title { font-size: 24px; } .crisis-line .number { font-size: 22px; } .form-row { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -264,7 +363,9 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 
 <header>
   <h1>CareLog &nbsp;<span>Caregiver Daily Log</span></h1>
-  <div style="display:flex;align-items:center;gap:14px;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="caregiver-name-display" style="display:none;" onclick="openPatientSetup()" title="Edit profile"></span>
+    <span id="header-sep" class="header-sep" style="display:none;">caring for</span>
     <span id="patient-name-display" onclick="openPatientSetup()" title="Edit patient"></span>
     <span id="alert-badge">0</span>
   </div>
@@ -276,6 +377,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <button onclick="showSection('medications')">Medications</button>
   <button onclick="showSection('patterns')">Patterns</button>
   <button onclick="showSection('summary')">Summary</button>
+  <button onclick="showSection('resources')">Resources</button>
   <button id="alerts-tab" onclick="showSection('alerts')">Alerts</button>
 </nav>
 
@@ -295,6 +397,19 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
         Write or speak naturally. No forms. Just describe what you observed — sleep, mood, meals, medications, appointments, anything that stood out.
       </p>
       <textarea id="note-input" placeholder="He didn't sleep again last night. Seemed on edge this morning and skipped his PT appointment. Refused his medication at breakfast. Ate a little at dinner…"></textarea>
+
+      <div style="margin:12px 0 4px;">
+        <span style="font-size:13px;font-weight:600;color:var(--text);">How are you holding up today?</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:6px;">Optional</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;" id="caregiver-rating-row">
+        <button class="rating-btn" data-rating="1" onclick="selectRating(1)" title="Struggling">1<span>Struggling</span></button>
+        <button class="rating-btn" data-rating="2" onclick="selectRating(2)" title="Hard day">2<span>Hard</span></button>
+        <button class="rating-btn" data-rating="3" onclick="selectRating(3)" title="Managing">3<span>Managing</span></button>
+        <button class="rating-btn" data-rating="4" onclick="selectRating(4)" title="Good">4<span>Good</span></button>
+        <button class="rating-btn" data-rating="5" onclick="selectRating(5)" title="Strong">5<span>Strong</span></button>
+      </div>
+
       <div class="input-row">
         <button class="btn btn-voice" id="voice-btn" title="Tap to speak">
           <span id="voice-icon">🎙</span>
@@ -443,11 +558,19 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
           <option value="30">Last 30 days</option>
         </select>
         <button class="btn btn-primary" onclick="generateSummary()">Generate Summary</button>
-        <button class="btn btn-secondary" onclick="window.print()">Print / Save PDF</button>
+        <button class="btn btn-secondary" id="print-btn" onclick="printSummary()" style="display:none;">Print / Save PDF</button>
       </div>
       <div id="summary-output"></div>
-      <p id="summary-meta" style="font-size:12px;color:var(--muted);margin-top:12px;display:none;"></p>
+      <p id="print-datestamp" style="display:none;font-size:10px;color:#888;margin-top:12px;font-family:monospace;"></p>
+      <p id="summary-meta" style="font-size:12px;color:var(--muted);margin-top:8px;display:none;"></p>
     </div>
+  </section>
+
+  <!-- ── RESOURCES ────────────────────────────────────────────────────── -->
+  <section id="sec-resources" class="section">
+    <h2 style="color:var(--navy);font-size:18px;margin-bottom:6px;">Resources</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:20px;">Support programs, crisis lines, and services for caregivers. Updated based on your profile.</p>
+    <div id="resources-list"></div>
   </section>
 
   <!-- ── ALERTS ─────────────────────────────────────────────────────────── -->
@@ -504,6 +627,49 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 
 </main>
 
+<!-- ── CAREGIVER CHECK-IN ─────────────────────────────────────────────────── -->
+<div id="caregiver-checkin-overlay">
+  <div class="checkin-box">
+    <p class="checkin-label">Before we move on</p>
+    <h2 class="checkin-question">How are you doing right now?</h2>
+    <p class="checkin-name" id="checkin-name-line">What you just went through was hard. Take a moment.</p>
+
+    <div class="checkin-options">
+      <button class="checkin-btn" onclick="submitCheckin('I am okay')">
+        I'm okay
+        <span style="display:block;font-size:13px;font-weight:400;opacity:0.7;margin-top:3px;">Shaken but steady</span>
+      </button>
+      <button class="checkin-btn" onclick="submitCheckin('I am exhausted but managing')">
+        Exhausted but managing
+        <span style="display:block;font-size:13px;font-weight:400;opacity:0.7;margin-top:3px;">Getting through it</span>
+      </button>
+      <button class="checkin-btn support" onclick="submitCheckin('I need support', true)">
+        I need to talk to someone
+        <span style="display:block;font-size:13px;font-weight:400;opacity:0.7;margin-top:3px;">I could use some support right now</span>
+      </button>
+    </div>
+
+    <div class="checkin-resources" id="checkin-resources">
+      <h4>You don't have to do this alone</h4>
+      <div class="checkin-resource-line">
+        <strong>Caregiver Support Line</strong>
+        1-855-260-3274 — available now, for caregivers
+      </div>
+      <div class="checkin-resource-line">
+        <strong>Crisis & Mental Health</strong>
+        Call or text 988 — 24/7, free, confidential
+      </div>
+      <div class="checkin-resource-line" id="checkin-vet-line" style="display:none;">
+        <strong>Veterans Crisis Line</strong>
+        Call 988, press 1 — specifically for veterans and their families
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px;width:100%;" onclick="closeCheckin()">Thank you — continue to my entry</button>
+    </div>
+
+    <button class="checkin-skip" onclick="closeCheckin()">Skip — go to my entry</button>
+  </div>
+</div>
+
 <!-- ── EMERGENCY OVERLAY ──────────────────────────────────────────────────── -->
 <div id="emergency-overlay">
   <div class="emergency-inner">
@@ -527,11 +693,108 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   </div>
 </div>
 
+<!-- ── LOCK SCREEN ────────────────────────────────────────────────────────── -->
+<div id="lock-screen">
+  <div class="lock-title">CareLog</div>
+  <div id="lock-name-line" class="lock-name"></div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="dot-0"></div>
+    <div class="pin-dot" id="dot-1"></div>
+    <div class="pin-dot" id="dot-2"></div>
+    <div class="pin-dot" id="dot-3"></div>
+  </div>
+  <div class="pin-keypad">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key" style="visibility:hidden;"></button>
+    <button class="pin-key" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinBackspace()">⌫</button>
+  </div>
+  <div class="lock-error" id="lock-error"></div>
+  <div id="lock-countdown-view" style="display:none;text-align:center;margin-top:8px;">
+    <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:6px;">Too many attempts. Try again in</div>
+    <div id="lock-countdown" style="font-size:36px;font-weight:700;color:white;letter-spacing:2px;">5:00</div>
+  </div>
+  <button class="lock-forgot" id="lock-forgot-btn" onclick="openRecovery()">Forgot PIN?</button>
+</div>
+
+<!-- ── RECOVERY SCREEN ───────────────────────────────────────────────────── -->
+<div id="recovery-screen">
+  <div class="recovery-box">
+    <h3>Reset your PIN</h3>
+    <p class="rec-sub">Answer your security question to set a new PIN.</p>
+
+    <div id="rec-lockout-view" class="rec-lockout" style="display:none;">
+      <div class="rec-lock-icon">🔒</div>
+      <p>Too many incorrect answers.</p>
+      <div class="rec-countdown" id="rec-countdown">5:00</div>
+      <p>Try again when the timer runs out.</p>
+    </div>
+
+    <div id="rec-form-view">
+      <!-- Step 1: answer -->
+      <div id="rec-step-1">
+        <div class="rec-question" id="rec-question-text">Loading…</div>
+        <div class="rec-field">
+          <label>Your answer</label>
+          <input type="text" id="rec-answer" placeholder="Not case-sensitive" autocomplete="off"
+                 onkeydown="if(event.key==='Enter') verifyAnswer()">
+        </div>
+        <div class="rec-error" id="rec-error"></div>
+        <button class="btn btn-primary" style="width:100%;padding:13px;" onclick="verifyAnswer()">Verify Answer</button>
+        <button class="btn btn-secondary" style="width:100%;padding:13px;margin-top:8px;" onclick="closeRecovery()">Back to PIN entry</button>
+      </div>
+      <!-- Step 2: new PIN (shown only after correct answer) -->
+      <div id="rec-step-2" style="display:none;">
+        <p style="color:#2E7D32;font-size:14px;font-weight:600;margin-bottom:20px;">Answer verified. Set your new PIN.</p>
+        <div class="rec-field">
+          <label>New PIN</label>
+          <input type="password" id="rec-new-pin" placeholder="····" maxlength="4" inputmode="numeric"
+                 style="letter-spacing:8px;text-align:center;font-size:22px;font-family:monospace;width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:8px;"
+                 autocomplete="new-password">
+        </div>
+        <div class="rec-field">
+          <label>Confirm new PIN</label>
+          <input type="password" id="rec-confirm-pin" placeholder="····" maxlength="4" inputmode="numeric"
+                 style="letter-spacing:8px;text-align:center;font-size:22px;font-family:monospace;width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:8px;"
+                 autocomplete="new-password">
+        </div>
+        <div class="rec-error" id="rec-pin-error"></div>
+        <button class="btn btn-primary" style="width:100%;padding:13px;" onclick="submitNewPin()">Set New PIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── PATIENT SETUP MODAL ────────────────────────────────────────────────── -->
 <div id="patient-setup">
   <div class="setup-box">
     <h2>Before we begin</h2>
-    <p class="setup-intro">Tell us about the person you're caring for. This helps CareLog show the right resources and ask the right questions — you only need to do this once.</p>
+    <p class="setup-intro">Tell us about yourself and the person you're caring for. You only need to do this once.</p>
+
+    <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:14px;">About you</p>
+    <div class="setup-field">
+      <label for="setup-caregiver-name">Your first name</label>
+      <input type="text" id="setup-caregiver-name" placeholder="e.g. Maria" autocomplete="off">
+    </div>
+    <div class="setup-field">
+      <label>Your relationship to them <span class="optional">(optional)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="rel-buttons">
+        <button class="veteran-btn" onclick="selectRelationship('spouse', this)">Spouse / Partner</button>
+        <button class="veteran-btn" onclick="selectRelationship('parent', this)">Parent</button>
+        <button class="veteran-btn" onclick="selectRelationship('child', this)">Adult Child</button>
+        <button class="veteran-btn" onclick="selectRelationship('professional', this)">Professional</button>
+      </div>
+    </div>
+
+    <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin:20px 0 14px;">About the person you're caring for</p>
     <div class="setup-field">
       <label for="setup-name">Their first name</label>
       <input type="text" id="setup-name" placeholder="e.g. Robert" autocomplete="off">
@@ -547,6 +810,41 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       <label>Local crisis line number <span class="optional">(optional)</span></label>
       <input type="text" id="setup-local-crisis" placeholder="e.g. 1-844-493-8255" autocomplete="off">
       <p style="font-size:12px;color:var(--muted);margin-top:6px;">If you have a local crisis number, it will appear on your emergency screen. Leave blank to use national defaults.</p>
+    </div>
+    <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin:20px 0 14px;">Set a PIN</p>
+    <div class="setup-field">
+      <label>4-digit PIN <span class="optional">(locks app on next visit)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="password" id="setup-pin" placeholder="····" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+               style="width:110px;padding:12px 14px;border:2px solid var(--border);border-radius:8px;font-size:22px;letter-spacing:8px;text-align:center;font-family:monospace;"
+               autocomplete="new-password">
+        <input type="password" id="setup-pin-confirm" placeholder="····" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+               style="width:110px;padding:12px 14px;border:2px solid var(--border);border-radius:8px;font-size:22px;letter-spacing:8px;text-align:center;font-family:monospace;"
+               autocomplete="new-password">
+        <span style="font-size:12px;color:var(--muted);line-height:1.4;">Enter PIN<br>then confirm</span>
+      </div>
+      <p id="setup-pin-error" style="font-size:12px;color:var(--red);margin-top:6px;display:none;"></p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">If you skip this, anyone who opens the app can see your logs.</p>
+    </div>
+    <div class="setup-field" id="setup-recovery-field" style="display:none;">
+      <label>Recovery question <span class="optional">(if you forget your PIN)</span></label>
+      <select id="setup-question-select" onchange="onQuestionSelect(this)"
+              style="width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:10px;">
+        <option value="">— Choose a question —</option>
+        <option value="What street did you grow up on?">What street did you grow up on?</option>
+        <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+        <option value="What city were you born in?">What city were you born in?</option>
+        <option value="What was your mother's maiden name?">What was your mother's maiden name?</option>
+        <option value="What was the name of your first school?">What was the name of your first school?</option>
+        <option value="What was the make of your first car?">What was the make of your first car?</option>
+        <option value="What is the name of the town where you got married?">What is the name of the town where you got married?</option>
+        <option value="custom">Write my own question…</option>
+      </select>
+      <input type="text" id="setup-custom-question" placeholder="Type your own question" autocomplete="off"
+             style="width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:10px;display:none;">
+      <input type="text" id="setup-recovery-answer" placeholder="Your answer (not case-sensitive)" autocomplete="off"
+             style="width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+      <p id="setup-recovery-error" style="font-size:12px;color:var(--red);margin-top:6px;display:none;"></p>
     </div>
     <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;" onclick="savePatient()">Start logging</button>
   </div>
@@ -573,10 +871,19 @@ let historyOffset   = 0;
 let recognition     = null;
 let isRecording     = false;
 let currentPatient  = null;
+let currentCaregiver = null;
 let setupVeteran    = false;
+let setupRelationship = null;
 let currentCustomTopics = [];
 
-const NAV_ORDER = ['log','history','medications','patterns','summary','alerts'];
+let selectedRating  = null;
+
+// ── PIN lock state ────────────────────────────────────────────────────────────
+let pinBuffer       = '';
+let lockTimer       = null;
+let autoLockMinutes = 15;
+
+const NAV_ORDER = ['log','history','medications','patterns','summary','resources','alerts'];
 
 const TAG_ICONS = {
   sleep:'😴', mood:'💭', appetite:'🍽', medication:'💊',
@@ -584,9 +891,8 @@ const TAG_ICONS = {
 };
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  loadPatient();
-  loadAlertBadge();
+window.addEventListener('DOMContentLoaded', async () => {
+  await checkLock();   // show lock screen before anything else if PIN is set
   initVoice();
   const noteInput = document.getElementById('note-input');
   noteInput.addEventListener('input', updateCharCount);
@@ -596,14 +902,281 @@ window.addEventListener('DOMContentLoaded', () => {
     const n = document.getElementById('setup-name').value.trim();
     document.getElementById('setup-name-label').textContent = n || 'this person';
   });
+  document.getElementById('setup-pin').addEventListener('input', () => {
+    const hasPin = document.getElementById('setup-pin').value.trim().length > 0;
+    document.getElementById('setup-recovery-field').style.display = hasPin ? 'block' : 'none';
+  });
+  // keyboard support for PIN entry
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('lock-screen').classList.contains('active')) return;
+    if (e.key >= '0' && e.key <= '9') pinKey(e.key);
+    if (e.key === 'Backspace') pinBackspace();
+  });
+  // reset auto-lock timer on activity
+  ['mousemove','keydown','touchstart','click'].forEach(ev =>
+    document.addEventListener(ev, resetLockTimer, { passive: true })
+  );
 });
+
+// ── PIN / Lock ────────────────────────────────────────────────────────────────
+async function checkLock() {
+  const r = await fetch('/api/pin/status');
+  const d = await r.json();
+  if (!d.pin_set) {
+    // No PIN — load app normally
+    loadPatient();
+    loadAlertBadge();
+    return;
+  }
+  autoLockMinutes = d.auto_lock_minutes || 15;
+  // Check if already unlocked this session
+  if (sessionStorage.getItem('carelog_unlocked') === '1') {
+    loadPatient();
+    loadAlertBadge();
+    resetLockTimer();
+    return;
+  }
+  showLockScreen();
+}
+
+async function showLockScreen() {
+  pinBuffer = '';
+  updateDots();
+  document.getElementById('lock-error').textContent = '';
+  document.querySelector('.pin-keypad').style.display = 'grid';
+  document.querySelector('.pin-dots').style.display = 'flex';
+  document.getElementById('lock-forgot-btn').style.display = 'inline';
+  document.getElementById('lock-countdown-view').style.display = 'none';
+  fetch('/api/caregiver').then(r => r.json()).then(d => {
+    const line = document.getElementById('lock-name-line');
+    line.textContent = d.caregiver ? `Welcome back, ${d.caregiver.name}` : '';
+  }).catch(() => {});
+  // Check if already locked out server-side
+  try {
+    const r = await fetch('/api/pin/verify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({pin: ''})
+    });
+    const d = await r.json();
+    if (d.locked) startPinLockout(d.seconds || 300);
+  } catch(e) {}
+  document.getElementById('lock-screen').classList.add('active');
+}
+
+function hideLockScreen() {
+  document.getElementById('lock-screen').classList.remove('active');
+  sessionStorage.setItem('carelog_unlocked', '1');
+  resetLockTimer();
+  loadPatient();
+  loadAlertBadge();
+}
+
+function resetLockTimer() {
+  clearTimeout(lockTimer);
+  if (autoLockMinutes <= 0) return;
+  lockTimer = setTimeout(() => {
+    sessionStorage.removeItem('carelog_unlocked');
+    showLockScreen();
+  }, autoLockMinutes * 60 * 1000);
+}
+
+function pinKey(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updateDots();
+  if (pinBuffer.length === 4) submitPin();
+}
+
+function pinBackspace() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updateDots();
+  document.getElementById('lock-error').textContent = '';
+}
+
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById(`dot-${i}`).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+let pinLockTimer = null;
+
+async function submitPin() {
+  const r = await fetch('/api/pin/verify', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({pin: pinBuffer})
+  });
+  const d = await r.json();
+  if (d.valid) {
+    hideLockScreen();
+    return;
+  }
+  if (d.locked) {
+    startPinLockout(d.seconds || 300);
+    return;
+  }
+  const rem = d.remaining;
+  document.getElementById('lock-error').textContent =
+    rem !== undefined ? `Incorrect PIN — ${rem} attempt${rem !== 1 ? 's' : ''} remaining` : 'Incorrect PIN — try again';
+  pinBuffer = '';
+  const dots = document.querySelector('.pin-dots');
+  dots.style.transform = 'translateX(-8px)';
+  setTimeout(() => { dots.style.transform = 'translateX(8px)'; }, 80);
+  setTimeout(() => { dots.style.transform = 'translateX(-4px)'; }, 160);
+  setTimeout(() => { dots.style.transform = 'translateX(0)'; updateDots(); }, 240);
+}
+
+function startPinLockout(seconds) {
+  pinBuffer = '';
+  updateDots();
+  document.getElementById('lock-error').textContent = '';
+  document.querySelector('.pin-keypad').style.display = 'none';
+  document.querySelector('.pin-dots').style.display = 'none';
+  document.getElementById('lock-forgot-btn').style.display = 'none';
+  document.getElementById('lock-countdown-view').style.display = 'block';
+
+  let remaining = seconds;
+  function tick() {
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    document.getElementById('lock-countdown').textContent = `${m}:${String(s).padStart(2,'0')}`;
+    if (remaining <= 0) {
+      clearInterval(pinLockTimer);
+      document.querySelector('.pin-keypad').style.display = 'grid';
+      document.querySelector('.pin-dots').style.display = 'flex';
+      document.getElementById('lock-forgot-btn').style.display = 'inline';
+      document.getElementById('lock-countdown-view').style.display = 'none';
+    }
+    remaining--;
+  }
+  tick();
+  pinLockTimer = setInterval(tick, 1000);
+}
+
+// ── Recovery ──────────────────────────────────────────────────────────────────
+let countdownTimer = null;
+
+async function openRecovery() {
+  const r = await fetch('/api/pin/question');
+  const d = await r.json();
+  if (!d.question) {
+    alert('No recovery question was set up. You will need to reset the app to change your PIN.');
+    return;
+  }
+  document.getElementById('rec-question-text').textContent = d.question;
+  document.getElementById('rec-answer').value = '';
+  document.getElementById('rec-new-pin').value = '';
+  document.getElementById('rec-confirm-pin').value = '';
+  document.getElementById('rec-error').textContent = '';
+  document.getElementById('rec-pin-error').textContent = '';
+  document.getElementById('rec-step-1').style.display = 'block';
+  document.getElementById('rec-step-2').style.display = 'none';
+  document.getElementById('rec-form-view').style.display = 'block';
+  document.getElementById('rec-lockout-view').style.display = 'none';
+  verifiedAnswer = '';
+  document.getElementById('lock-screen').classList.remove('active');
+  document.getElementById('recovery-screen').classList.add('active');
+}
+
+function closeRecovery() {
+  clearInterval(countdownTimer);
+  document.getElementById('recovery-screen').classList.remove('active');
+  pinBuffer = '';
+  updateDots();
+  document.getElementById('lock-error').textContent = '';
+  document.getElementById('lock-screen').classList.add('active');
+}
+
+function startLockoutCountdown(seconds) {
+  document.getElementById('rec-form-view').style.display = 'none';
+  document.getElementById('rec-lockout-view').style.display = 'block';
+  let remaining = seconds;
+  function tick() {
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    document.getElementById('rec-countdown').textContent = `${m}:${String(s).padStart(2,'0')}`;
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      document.getElementById('rec-form-view').style.display = 'block';
+      document.getElementById('rec-lockout-view').style.display = 'none';
+      document.getElementById('rec-error').textContent = '';
+    }
+    remaining--;
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+let verifiedAnswer = '';
+
+async function verifyAnswer() {
+  const answer = document.getElementById('rec-answer').value.trim();
+  const errEl  = document.getElementById('rec-error');
+  if (!answer) { errEl.textContent = 'Please enter your answer.'; return; }
+
+  // Send with a dummy pin — backend checks answer first
+  const r = await fetch('/api/pin/reset', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({answer, new_pin: null, check_only: true})
+  });
+  const d = await r.json();
+
+  if (d.locked) { startLockoutCountdown(d.seconds || 300); return; }
+  if (d.error && !d.remaining) { errEl.textContent = d.error; return; }
+  if (d.valid === false) {
+    const rem = d.remaining;
+    errEl.textContent = `Incorrect answer. ${rem} attempt${rem !== 1 ? 's' : ''} remaining.`;
+    return;
+  }
+  if (d.answer_valid) {
+    verifiedAnswer = answer;
+    errEl.textContent = '';
+    document.getElementById('rec-step-1').style.display = 'none';
+    document.getElementById('rec-step-2').style.display = 'block';
+    document.getElementById('rec-new-pin').focus();
+  }
+}
+
+async function submitNewPin() {
+  const newPin  = document.getElementById('rec-new-pin').value.trim();
+  const confPin = document.getElementById('rec-confirm-pin').value.trim();
+  const errEl   = document.getElementById('rec-pin-error');
+  if (!/^\d{4}$/.test(newPin))  { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
+  if (newPin !== confPin) { errEl.textContent = 'PINs do not match.'; return; }
+
+  const r = await fetch('/api/pin/reset', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({answer: verifiedAnswer, new_pin: newPin})
+  });
+  const d = await r.json();
+  if (d.success) {
+    clearInterval(countdownTimer);
+    document.getElementById('recovery-screen').classList.remove('active');
+    sessionStorage.setItem('carelog_unlocked', '1');
+    loadPatient();
+    loadAlertBadge();
+  } else {
+    errEl.textContent = d.error || 'Something went wrong.';
+  }
+}
+
+// Show/hide custom question field in setup
+function onQuestionSelect(sel) {
+  const custom = document.getElementById('setup-custom-question');
+  custom.style.display = sel.value === 'custom' ? 'block' : 'none';
+}
 
 // ── Patient setup ─────────────────────────────────────────────────────────────
 async function loadPatient() {
-  const r = await fetch('/api/patient');
-  const d = await r.json();
-  if (d.patient) {
-    currentPatient = d.patient;
+  const [pr, cr] = await Promise.all([fetch('/api/patient'), fetch('/api/caregiver')]);
+  const pd = await pr.json();
+  const cd = await cr.json();
+  if (cd.caregiver) currentCaregiver = cd.caregiver;
+  if (pd.patient) {
+    currentPatient = pd.patient;
     updatePatientUI();
     loadCheckin();
     loadLastEntry();
@@ -643,6 +1216,10 @@ function openPatientSetup() {
     document.getElementById('setup-local-crisis').value = currentPatient.local_crisis_number || '';
     selectVeteran(currentPatient.is_veteran);
   }
+  if (currentCaregiver) {
+    document.getElementById('setup-caregiver-name').value = currentCaregiver.name;
+    if (currentCaregiver.relationship) selectRelationship(currentCaregiver.relationship, null);
+  }
 }
 
 function selectVeteran(val) {
@@ -651,15 +1228,76 @@ function selectVeteran(val) {
   document.getElementById('btn-veteran-no').classList.toggle('selected', !val);
 }
 
+function selectRelationship(val, el) {
+  setupRelationship = val;
+  document.querySelectorAll('#rel-buttons .veteran-btn').forEach(b => b.classList.remove('selected'));
+  if (el) {
+    el.classList.add('selected');
+  } else {
+    document.querySelectorAll('#rel-buttons .veteran-btn').forEach(b => {
+      if (b.textContent.toLowerCase().includes(val)) b.classList.add('selected');
+    });
+  }
+}
+
 async function savePatient() {
-  const name = document.getElementById('setup-name').value.trim();
-  if (!name) { alert('Please enter a name.'); return; }
+  const patientName = document.getElementById('setup-name').value.trim();
+  if (!patientName) { alert('Please enter the patient\'s name.'); return; }
+  const caregiverName = document.getElementById('setup-caregiver-name').value.trim();
+  if (!caregiverName) { alert('Please enter your name.'); return; }
   const local = document.getElementById('setup-local-crisis').value.trim();
-  await fetch('/api/patient', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name, is_veteran: setupVeteran, local_crisis_number: local || null})
-  });
+
+  // PIN validation
+  const pin     = document.getElementById('setup-pin').value.trim();
+  const pinConf = document.getElementById('setup-pin-confirm').value.trim();
+  const pinErr  = document.getElementById('setup-pin-error');
+  // Recovery question
+  const selQ    = document.getElementById('setup-question-select').value;
+  const customQ = document.getElementById('setup-custom-question').value.trim();
+  const question = selQ === 'custom' ? customQ : selQ;
+  const recAnswer = document.getElementById('setup-recovery-answer').value.trim();
+  const recErr  = document.getElementById('setup-recovery-error');
+
+  if (pin) {
+    if (!/^\d{4}$/.test(pin)) {
+      pinErr.textContent = 'PIN must be exactly 4 digits.'; pinErr.style.display = 'block'; return;
+    }
+    if (pin !== pinConf) {
+      pinErr.textContent = 'PINs do not match.'; pinErr.style.display = 'block'; return;
+    }
+    pinErr.style.display = 'none';
+    if (!question || !recAnswer) {
+      recErr.textContent = 'Please set a recovery question and answer.'; recErr.style.display = 'block'; return;
+    }
+    recErr.style.display = 'none';
+  }
+
+  const saves = [
+    fetch('/api/patient', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name: patientName, is_veteran: setupVeteran, local_crisis_number: local || null})
+    }),
+    fetch('/api/caregiver', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name: caregiverName, relationship: setupRelationship})
+    })
+  ];
+  if (pin) {
+    saves.push(fetch('/api/pin/set', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({pin, auto_lock_minutes: 15})
+    }));
+    saves.push(fetch('/api/pin/set-recovery', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({question, answer: recAnswer})
+    }));
+  }
+  await Promise.all(saves);
+  sessionStorage.setItem('carelog_unlocked', '1'); // already authenticated during setup
   document.getElementById('patient-setup').classList.remove('open');
   await loadPatient();
 }
@@ -669,6 +1307,12 @@ function updatePatientUI() {
   document.getElementById('patient-name-display').textContent = currentPatient.is_veteran
     ? `${currentPatient.name} · Veteran`
     : currentPatient.name;
+  if (currentCaregiver) {
+    const el = document.getElementById('caregiver-name-display');
+    el.textContent = currentCaregiver.name;
+    el.style.display = 'inline';
+    document.getElementById('header-sep').style.display = 'inline';
+  }
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -679,9 +1323,11 @@ function showSection(name) {
   const idx = NAV_ORDER.indexOf(name);
   document.querySelectorAll('nav button')[idx]?.classList.add('active');
 
+  if (name !== 'summary') document.getElementById('print-btn').style.display = 'none';
   if (name === 'history')     { historyOffset = 0; loadHistory(false); }
   if (name === 'medications') loadMedications();
   if (name === 'patterns')    loadPatterns();
+  if (name === 'resources')   loadResources();
   if (name === 'alerts')      loadAlerts();
 }
 
@@ -698,6 +1344,14 @@ async function loadCheckin() {
   } catch(e) {
     document.getElementById('checkin-greeting').textContent = 'Welcome back. How are things going today?';
   }
+}
+
+// ── Caregiver rating ─────────────────────────────────────────────────────────
+function selectRating(val) {
+  selectedRating = val;
+  document.querySelectorAll('.rating-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.rating) === val);
+  });
 }
 
 // ── Character count ───────────────────────────────────────────────────────────
@@ -793,7 +1447,7 @@ async function submitNote() {
     const r = await fetch('/api/entry', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({note})
+      body: JSON.stringify({note, caregiver_rating: selectedRating})
     });
     const d = await r.json();
     if (d.error) { alert(d.error); return; }
@@ -810,6 +1464,8 @@ async function submitNote() {
     loadAlertBadge();
     document.getElementById('note-input').value = '';
     updateCharCount();
+    selectedRating = null;
+    document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
 
   } catch(e) {
     alert('Something went wrong. Please try again.');
@@ -1207,6 +1863,45 @@ function civilianCrisisLines(patient) {
 
 function dismissEmergency() {
   document.getElementById('emergency-overlay').style.display = 'none';
+  openCaregiverCheckin();
+}
+
+// ── Caregiver check-in ────────────────────────────────────────────────────────
+function openCaregiverCheckin() {
+  const overlay = document.getElementById('caregiver-checkin-overlay');
+  const nameLine = document.getElementById('checkin-name-line');
+  if (currentCaregiver) {
+    nameLine.textContent = `${currentCaregiver.name}, what you just went through was hard. Take a moment.`;
+  } else {
+    nameLine.textContent = 'What you just went through was hard. Take a moment.';
+  }
+  const vetLine = document.getElementById('checkin-vet-line');
+  vetLine.style.display = (currentPatient && currentPatient.is_veteran) ? 'block' : 'none';
+  document.getElementById('checkin-resources').style.display = 'none';
+  overlay.classList.add('open');
+}
+
+async function submitCheckin(response, wantedSupport = false) {
+  // Show resources if they need support
+  if (wantedSupport) {
+    document.querySelectorAll('.checkin-btn').forEach(b => b.style.display = 'none');
+    document.getElementById('checkin-resources').style.display = 'block';
+  } else {
+    closeCheckin();
+  }
+  // Log it regardless
+  try {
+    await fetch('/api/caregiver-checkin', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({entry_id: lastEntryId, response, wanted_support: wantedSupport})
+    });
+  } catch(e) {}
+}
+
+function closeCheckin() {
+  document.getElementById('caregiver-checkin-overlay').classList.remove('open');
+  document.querySelectorAll('.checkin-btn').forEach(b => b.style.display = 'block');
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
@@ -1275,15 +1970,78 @@ async function loadHistory(append) {
 }
 
 // ── Patterns ──────────────────────────────────────────────────────────────────
+const RATING_LABELS = ['','Struggling','Hard','Managing','Good','Strong'];
+const RATING_COLORS = ['','#C62828','#E65100','#F9A825','#2E7D32','#1565C0'];
+
 async function loadPatterns() {
-  const r = await fetch('/api/patterns?days=7&threshold=3');
-  const d = await r.json();
+  const [pr, cr] = await Promise.all([
+    fetch('/api/patterns?days=7&threshold=3'),
+    fetch('/api/corrections/stats')
+  ]);
+  const d  = await pr.json();
+  const cs = await cr.json();
   const list = document.getElementById('patterns-list');
   list.innerHTML = '';
 
-  if (d.patterns.length === 0) {
-    list.innerHTML = '<div class="no-patterns">No recurring patterns flagged in the last 7 days.</div>';
+  // ── Caregiver well-being card ──
+  const wb = d.caregiver_wellbeing;
+  if (wb) {
+    const avgRating = Math.round(wb.avg);
+    const color = RATING_COLORS[avgRating] || '#888';
+    const label = RATING_LABELS[avgRating] || '';
+    const trendText = wb.trend === 'improving' ? '↑ Improving'
+                    : wb.trend === 'declining'  ? '↓ Declining'
+                    : wb.trend === 'stable'     ? '→ Stable' : '';
+    const trendColor = wb.trend === 'improving' ? '#2E7D32'
+                     : wb.trend === 'declining'  ? '#C62828' : '#888';
+    const dots = wb.ratings.slice(-7).map(r =>
+      `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${RATING_COLORS[r.rating]||'#ccc'};margin:1px;" title="${r.date}: ${RATING_LABELS[r.rating]}"></span>`
+    ).join('');
+    const wbEl = document.createElement('div');
+    wbEl.className = 'pattern-card';
+    wbEl.style.borderLeft = `4px solid ${color}`;
+    wbEl.innerHTML = `
+      <div class="pattern-icon" style="font-size:22px;">🧡</div>
+      <div class="pattern-body">
+        <h3>Your well-being — last 7 days</h3>
+        <p>Average: <strong style="color:${color};">${label} (${wb.avg}/5)</strong>
+          ${trendText ? `&nbsp;·&nbsp;<span style="color:${trendColor};font-weight:600;">${trendText}</span>` : ''}
+          &nbsp;·&nbsp; ${wb.count} day${wb.count !== 1 ? 's' : ''} rated
+        </p>
+        <div style="margin-top:6px;">${dots}</div>
+      </div>`;
+    list.appendChild(wbEl);
+  }
+
+  // ── AI correction visibility card ──
+  if (cs.total_entries > 0) {
+    const corrEl = document.createElement('div');
+    corrEl.className = 'pattern-card';
+    corrEl.style.borderLeft = '4px solid var(--blue)';
+    corrEl.innerHTML = `
+      <div class="pattern-icon" style="font-size:22px;">✏️</div>
+      <div class="pattern-body">
+        <h3>AI accuracy — your corrections</h3>
+        <p>You have corrected the AI on <strong>${cs.corrected}</strong> of ${cs.total_entries} entries (${cs.pct}%).
+          ${cs.corrected === 0
+            ? 'The AI has matched your observations so far.'
+            : 'Your corrections are saved alongside the original — they make the tool more accurate over time.'}
+        </p>
+      </div>`;
+    list.appendChild(corrEl);
+  }
+
+  // ── Patient concern patterns ──
+  if (d.patterns.length === 0 && !wb && cs.total_entries === 0) {
+    list.innerHTML = '<div class="no-patterns">No patterns yet. Keep logging — patterns appear after 3 or more entries in a week.</div>';
     return;
+  }
+
+  if (d.patterns.length === 0) {
+    const el = document.createElement('div');
+    el.className = 'no-patterns';
+    el.textContent = 'No recurring patient concerns flagged in the last 7 days.';
+    list.appendChild(el);
   }
 
   d.patterns.forEach(p => {
@@ -1334,10 +2092,16 @@ async function generateSummary() {
   p.name = p.name.replace(/\b\w/g, c => c.toUpperCase());
   const period = d.period;
 
+  const cg = d.caregiver;
+  const cgLine = cg
+    ? `Prepared by: ${escHtml(cg.name)}${cg.relationship ? ' (' + escHtml(cg.relationship) + ')' : ''} &nbsp;·&nbsp; ID: ${escHtml(cg.caregiver_id)}`
+    : '';
+
   let html = `
   <div class="sum-header">
     <h3>Caregiver Observation Summary</h3>
     <p>${escHtml(p.name)}${p.is_veteran ? ' · Veteran' : ''} &nbsp;|&nbsp; ${escHtml(period.start)} through ${escHtml(period.end)} (${period.days} days) &nbsp;|&nbsp; ${d.total_entries} entries · ${d.emergency_count} flag${d.emergency_count !== 1 ? 's' : ''}</p>
+    ${cgLine ? `<p style="font-size:12px;color:var(--muted);margin-top:4px;font-family:monospace;">${cgLine}</p>` : ''}
   </div>`;
 
   // Medications
@@ -1409,6 +2173,23 @@ async function generateSummary() {
     html += '</div>';
   }
 
+  // Follow-up appointment reminders
+  if (d.follow_ups && d.follow_ups.length) {
+    html += `<div class="sum-section">
+      <h4 style="display:flex;align-items:center;gap:8px;">
+        <span style="background:var(--navy);color:white;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;letter-spacing:0.4px;">BRING TO NEXT VISIT</span>
+        Follow-Up Reminders
+      </h4>
+      <p style="font-size:13px;color:var(--muted);margin:-4px 0 12px;">Based on what was logged, these are topics worth raising with a provider or care coordinator.</p>`;
+    html += d.follow_ups.map(item =>
+      `<div class="sum-followup-item">
+        <span class="sum-followup-bullet">›</span>
+        <span>${escHtml(item)}</span>
+      </div>`
+    ).join('');
+    html += '</div>';
+  }
+
   // Footer
   html += `<div class="sum-footer">
     This summary reflects observations reported by the caregiver of ${escHtml(p.name)} through a structured daily logging tool.
@@ -1420,6 +2201,228 @@ async function generateSummary() {
   out.innerHTML = html;
   meta.textContent = `${d.entries_reviewed} entries reviewed · ${d.date_range}`;
   meta.style.display = 'block';
+
+  // Show print button and set datestamp
+  document.getElementById('print-btn').style.display = 'inline-block';
+  const ds = document.getElementById('print-datestamp');
+  ds.textContent = `Printed: ${new Date().toLocaleString('en-US', {dateStyle:'long', timeStyle:'short'})}`;
+}
+
+function printSummary() {
+  const out = document.getElementById('summary-output');
+  if (!out || !out.innerHTML) { alert('Generate a summary first.'); return; }
+  window.print();
+}
+
+// ── Resources ─────────────────────────────────────────────────────────────────
+async function loadResources() {
+  const container = document.getElementById('resources-list');
+  if (!container) return;
+  const isVet = currentPatient && currentPatient.is_veteran;
+
+  // Pull recent patterns to show contextual cards
+  let activePatterns = [];
+  try {
+    const pr = await fetch('/api/patterns');
+    const pd = await pr.json();
+    if (pd.patterns) activePatterns = pd.patterns.map(p => p.category);
+  } catch(e) {}
+
+  const groups = [];
+
+  // ── Crisis & Safety (always shown) ──
+  const crisisCards = [];
+  if (isVet) {
+    crisisCards.push({
+      icon: '📞',
+      title: 'Veterans Crisis Line',
+      detail: 'Call or text <strong>988, then press 1</strong>. Available 24/7 for veterans and their caregivers.',
+      contextual: false
+    });
+  }
+  crisisCards.push({
+    icon: '📞',
+    title: '988 Suicide & Crisis Lifeline',
+    detail: 'Call or text <strong>988</strong>. Available 24/7 for anyone in mental health crisis.',
+    contextual: false
+  });
+  crisisCards.push({
+    icon: '🚨',
+    title: '911 — Emergency Services',
+    detail: 'For any physical emergency, immediate danger, or violent incident. Your safety comes first.',
+    contextual: false
+  });
+  groups.push({ label: 'Crisis & Emergency', cards: crisisCards });
+
+  // ── Caregiver Support ──
+  const supportCards = [];
+  if (isVet) {
+    supportCards.push({
+      icon: '🏥',
+      title: 'VA Caregiver Support Line',
+      detail: 'Call <strong>1-855-260-3274</strong>. Free coaching, peer support, and benefit navigation for VA caregivers.',
+      contextual: false
+    });
+    supportCards.push({
+      icon: '💰',
+      title: 'Program of Comprehensive Assistance for Family Caregivers (PCAFC)',
+      detail: 'Monthly stipend, health insurance, mental health services, and respite care for qualifying veteran caregivers. Apply through your VA social worker.',
+      contextual: false
+    });
+    supportCards.push({
+      icon: '🤝',
+      title: 'Elizabeth Dole Foundation',
+      detail: 'Resources, peer support, and advocacy specifically for military and veteran caregivers. elizabethdolefoundation.org',
+      contextual: false
+    });
+    if (activePatterns.includes('behavior') || activePatterns.includes('mood')) {
+      supportCards.push({
+        icon: '🧠',
+        title: 'VA Mental Health Services',
+        detail: 'The VA offers mental health care for veterans and can connect caregivers with support. Ask at your nearest VA facility.',
+        contextual: true
+      });
+    }
+  } else {
+    supportCards.push({
+      icon: '📞',
+      title: 'ARCH National Respite Network',
+      detail: 'Call <strong>1-855-227-3640</strong>. Connects caregivers to temporary relief services nationwide.',
+      contextual: false
+    });
+    supportCards.push({
+      icon: '🏠',
+      title: 'Eldercare Locator',
+      detail: 'Call <strong>1-800-677-1116</strong>. Connects to local services for older adults and their caregivers.',
+      contextual: false
+    });
+    supportCards.push({
+      icon: '🤝',
+      title: 'Family Caregiver Alliance',
+      detail: 'Free fact sheets, care guides, and a national resource library. caregiver.org',
+      contextual: false
+    });
+    supportCards.push({
+      icon: '👴',
+      title: 'AARP Caregiving Resources',
+      detail: 'Tools, guides, and community for family caregivers. aarp.org/caregiving',
+      contextual: false
+    });
+  }
+  groups.push({ label: 'Caregiver Support', cards: supportCards });
+
+  // ── Condition-Specific (contextual based on patterns) ──
+  const contextCards = [];
+  if (activePatterns.includes('sleep')) {
+    contextCards.push({
+      icon: '😴',
+      title: 'Sleep Disturbance Resources',
+      detail: 'Your logs show recurring sleep concerns. Ask the provider about a sleep assessment or medication review. The VA Sleep Clinic or a community sleep specialist can evaluate further.',
+      contextual: true
+    });
+  }
+  if (activePatterns.includes('medication')) {
+    contextCards.push({
+      icon: '💊',
+      title: 'Medication Refusal & Adherence',
+      detail: 'Medication refusals have been logged more than once. The prescribing provider should know. Pharmacists can also review the regimen for simplification.',
+      contextual: true
+    });
+  }
+  if (activePatterns.includes('mood') || activePatterns.includes('behavior')) {
+    if (isVet) {
+      contextCards.push({
+        icon: '🧠',
+        title: 'PTSD & Mental Health — VA Resources',
+        detail: 'Behavioral and mood concerns have been logged. VA Mental Health Services, the PTSD Coach app, and the Make the Connection resource at maketheconnection.net may help.',
+        contextual: true
+      });
+    } else {
+      contextCards.push({
+        icon: '🧠',
+        title: 'Mental Health Support',
+        detail: 'Behavioral and mood concerns have been logged. NAMI (National Alliance on Mental Illness) offers family support: call <strong>1-800-950-6264</strong> or text NAMI to 741741.',
+        contextual: true
+      });
+    }
+  }
+  if (activePatterns.includes('appetite')) {
+    contextCards.push({
+      icon: '🍽',
+      title: 'Nutrition & Appetite Concerns',
+      detail: 'Appetite concerns have been logged. A dietitian referral through the VA or primary care can assess nutritional needs. Meals on Wheels is available in most communities: mealsonwheelsamerica.org',
+      contextual: true
+    });
+  }
+  if (isVet && (activePatterns.includes('behavior') || activePatterns.includes('physical'))) {
+    contextCards.push({
+      icon: '🔥',
+      title: 'PACT Act & Burn Pit Registry',
+      detail: 'Veterans exposed to burn pits, Agent Orange, or other toxics may be eligible for expanded VA benefits under the PACT Act. va.gov/pact-act-information',
+      contextual: true
+    });
+  }
+  if (contextCards.length) {
+    groups.push({ label: 'Based on Recent Logs', cards: contextCards });
+  }
+
+  // ── Respite & Relief (always shown) ──
+  const respiteCards = [];
+  if (isVet) {
+    respiteCards.push({
+      icon: '🌿',
+      title: 'VA Respite Care',
+      detail: 'Eligible VA caregivers can receive temporary in-home or facility-based relief. Ask your VA social worker about respite services under PCAFC.',
+      contextual: false
+    });
+  } else {
+    respiteCards.push({
+      icon: '🌿',
+      title: 'Respite Locator — ARCH',
+      detail: 'Find local respite care through the ARCH national directory. archrespite.org/respite-locator',
+      contextual: false
+    });
+    respiteCards.push({
+      icon: '🏘',
+      title: 'Area Agencies on Aging (AAA)',
+      detail: 'Local offices connect caregivers to meals, transportation, and in-home support. Find yours at eldercare.acl.gov',
+      contextual: false
+    });
+  }
+  if (activePatterns.includes('mood') || activePatterns.includes('behavior')) {
+    respiteCards.push({
+      icon: '💬',
+      title: 'Caregiver Peer Support',
+      detail: 'Caregiving can be isolating. Peer support connects you with someone who understands. ' +
+        (isVet ? 'The VA Caregiver Support Program offers peer mentors — call 1-855-260-3274.' : 'AARP and the Family Caregiver Alliance both offer peer programs.'),
+      contextual: true
+    });
+  }
+  groups.push({ label: 'Respite & Relief', cards: respiteCards });
+
+  // Render
+  let html = '';
+  if (activePatterns.length) {
+    html += `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1E40AF;">
+      <strong>Personalized</strong> — some resources below are highlighted based on patterns logged (${activePatterns.slice(0,4).join(', ')}).
+    </div>`;
+  }
+
+  for (const group of groups) {
+    if (!group.cards.length) continue;
+    html += `<div class="resource-group"><h3>${escHtml(group.label)}</h3>`;
+    html += group.cards.map(card => `
+      <div class="resource-card${card.contextual ? ' contextual' : ''}">
+        <div style="font-size:22px;flex-shrink:0;line-height:1;">${card.icon}</div>
+        <div class="resource-body">
+          <h4>${escHtml(card.title)}</h4>
+          <p>${card.detail}</p>
+        </div>
+      </div>`).join('');
+    html += '</div>';
+  }
+
+  container.innerHTML = html || '<p style="color:var(--muted);font-size:14px;">No resources loaded. Set up a patient profile first.</p>';
 }
 
 // ── Alerts ────────────────────────────────────────────────────────────────────

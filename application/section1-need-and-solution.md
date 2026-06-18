@@ -24,10 +24,11 @@ Fewer than 18% of military family caregivers use the financial stipends and supp
 
 CareLog is a browser-based AI tool built specifically for veteran and military family caregivers. The caregiver speaks or types naturally about their day — "he didn't sleep again, seemed on edge, skipped his PT appointment" — and the AI extracts structured observations automatically. Over time, the tool identifies patterns. When a concern repeats across multiple days, it is flagged. When urgent language appears, an emergency screen interrupts everything and surfaces the right resources immediately — Veterans Crisis Line, 911, VA Caregiver Support Line — based on the type of emergency and whether the patient is a veteran.
 
-The tool distinguishes between three emergency types:
+The tool distinguishes between four emergency types:
 - **Mental health crisis** — suicidal language or self-harm, surfaces Veterans Crisis Line and crisis resources immediately
 - **Physical emergency** — fall, injury, unresponsiveness, surfaces 911 and physical emergency guidance
 - **Caregiver safety** — language indicating the caregiver is being threatened or harmed, surfaces 911 with guidance to leave the room first
+- **Third-party violence** — language indicating the care recipient has harmed or threatened someone else, surfaces 911 with guidance to get others to safety first and not intervene physically
 
 At any point, the caregiver can generate a clean, plain-language summary of recent observations formatted for a clinician, a VA provider, or a family member. They do not fill out a form. They do not try to remember two weeks of history under pressure. They hand over a document.
 
@@ -44,7 +45,7 @@ All core features are functional and demonstrable:
 - Automated AI extraction of structured observations (sleep, mood, appetite, medication, appointments, social, physical, behavior)
 - Pattern detection across entries over time
 - Clinician-ready summary generation
-- Three-branch emergency detection with appropriate resources per emergency type
+- Four-branch emergency detection with appropriate resources per emergency type
 - Patient profile system with veteran/civilian distinction
 - Locked alert log with multi-party deletion requirement and audit trail
 - Memory-aware greeting that references recent patterns by name

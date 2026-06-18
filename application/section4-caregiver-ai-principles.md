@@ -14,7 +14,8 @@ This section maps each of ACL's named Caregiver AI Principles explicitly to Care
 - The caregiver controls what is logged. Nothing is captured automatically — every entry requires the caregiver to initiate it.
 - The care recipient's name and veteran status are stored as a patient profile. No medical record number, diagnosis, or insurance information is collected or required.
 - The locked alert log protects dignity in both directions — it prevents a single bad actor from erasing evidence of either caregiver misconduct or false accusations. Deletion requires multi-party agreement, and every deletion request is permanently recorded regardless of outcome.
-- The AI never contacts anyone, shares data externally, or takes automated action on behalf of the caregiver or care recipient. The human always decides.
+- The AI never contacts anyone, takes automated action, or makes decisions on behalf of the caregiver or care recipient. The human always decides.
+- **AI processing and data transmission:** In production, note content is transmitted to the Anthropic API for AI extraction under Anthropic's published API terms (anthropic.com/legal/privacy). Anthropic does not retain, aggregate, or use API inputs for model training — this commitment is contractually binding, publicly documented, and independently verifiable. The note is processed and the structured result is returned; no content is stored by the AI provider beyond the duration of the request. Caregivers are informed of this before first use. The tool also supports sandbox mode, which performs keyword extraction with no external data transmission of any kind, giving caregivers the option to operate entirely offline if privacy requirements demand it.
 
 ---
 
