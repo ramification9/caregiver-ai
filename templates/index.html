@@ -440,9 +440,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     </div>
 
     <div id="extraction-result" class="card">
-      <h2>What the AI noticed</h2>
-      <div id="result-note-box" class="result-note warn"></div>
-      <div class="tags-grid" id="tags-grid"></div>
+      <div id="concern-box"></div>
 
       <!-- AI follow-up -->
       <div id="ai-followup" class="followup-box" style="display:none;">
@@ -452,24 +450,23 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 
       <!-- Custom topics -->
       <div class="custom-topic-area">
-        <label>Add a topic the AI missed:</label>
-        <div id="custom-topics-display" style="margin:6px 0 4px;"></div>
+        <div id="custom-topics-display" style="margin:0 0 6px;"></div>
         <div id="topic-suggestions-row" style="margin-bottom:8px;"></div>
-        <div class="topic-input-row">
-          <input type="text" id="custom-topic-input" placeholder="Short name — e.g. Pool Therapy, Morning Care"
-                 onkeydown="if(event.key==='Enter') document.getElementById('custom-topic-detail').focus()">
-          <button class="btn btn-secondary btn-sm" onclick="addCustomTopic()" style="border-radius:50px;white-space:nowrap;">+ Add</button>
+        <button class="btn btn-secondary btn-sm" id="add-topic-toggle" onclick="toggleTopicInput()" style="border-radius:50px;">+ Add a topic</button>
+        <div id="topic-input-area" style="display:none;margin-top:10px;">
+          <div class="topic-input-row">
+            <input type="text" id="custom-topic-input" placeholder="Short name — e.g. Pool Therapy, Morning Care"
+                   onkeydown="if(event.key==='Enter') document.getElementById('custom-topic-detail').focus()">
+            <button class="btn btn-secondary btn-sm" onclick="addCustomTopic()" style="border-radius:50px;white-space:nowrap;">Save</button>
+          </div>
+          <input type="text" id="custom-topic-detail"
+                 placeholder="Details (optional — e.g. first session, took 45 min, needed full assistance)"
+                 style="width:100%;margin-top:8px;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;"
+                 onkeydown="if(event.key==='Enter') addCustomTopic()">
         </div>
-        <input type="text" id="custom-topic-detail"
-               placeholder="Details (optional — e.g. first session, took 45 min, needed full assistance)"
-               style="width:100%;margin-top:8px;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;"
-               onkeydown="if(event.key==='Enter') addCustomTopic()">
       </div>
 
       <p class="sandbox-note" id="extraction-sandbox-note"></p>
-      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="showSection('history')">View history</button>
-      </div>
     </div>
 
     {% if sandbox %}
@@ -1266,19 +1263,25 @@ async function loadLastEntry() {
     const entry = d.entries[0];
     lastEntryId = entry.id;
     lastTags    = entry.tags || {};
+    const concerns  = Object.keys(lastTags).filter(k => lastTags[k].sentiment === 'concerning');
+    const positives = Object.keys(lastTags).filter(k => lastTags[k].sentiment === 'positive');
+    let lastEntryNote = '';
+    if (concerns.length > 0) {
+      lastEntryNote = `${concerns.length} concern${concerns.length === 1 ? '' : 's'} from last entry.`;
+    } else if (positives.length > 0) {
+      lastEntryNote = `Positive signs in last entry: ${positives.join(', ')}.`;
+    }
     const fakeExtraction = {
-      tags:            lastTags,
-      flags:           Object.keys(lastTags).filter(k => lastTags[k].sentiment === 'concerning').map(k => k + '_concern'),
-      emergency:       false,
-      note:            Object.keys(lastTags).length
-                         ? Object.keys(lastTags).filter(k => lastTags[k].sentiment === 'concerning').length + ' concern(s) from last entry.'
-                         : 'No specific topics detected in last entry.',
-      sandbox:         true
+      tags:      lastTags,
+      flags:     concerns.map(k => k + '_concern'),
+      emergency: false,
+      note:      lastEntryNote,
+      sandbox:   true
     };
     currentCustomTopics = entry.custom_tags || [];
     renderExtractionResult(fakeExtraction, [], null);
     document.getElementById('ai-followup').style.display = 'none';
-    document.getElementById('extraction-result').querySelector('h2').textContent = 'Last entry — add topics or corrections';
+    renderConcernBox(fakeExtraction, true);
   } catch(e) {}
 }
 
@@ -1594,27 +1597,9 @@ async function submitNote() {
 
 // ── Render extraction ─────────────────────────────────────────────────────────
 function renderExtractionResult(extraction, patterns, followUp) {
-  const box     = document.getElementById('extraction-result');
-  const noteBox = document.getElementById('result-note-box');
-  const grid    = document.getElementById('tags-grid');
+  const box = document.getElementById('extraction-result');
 
-  noteBox.textContent = extraction.note;
-  noteBox.className   = 'result-note ' +
-    (extraction.emergency ? 'danger' :
-     extraction.flags.length ? 'warn' : 'ok');
-
-  grid.innerHTML = '';
-  if (Object.keys(extraction.tags).length === 0) {
-    grid.innerHTML = '<span style="color:var(--muted);font-size:14px;">No specific topics detected — see the follow-up question below.</span>';
-  } else {
-    for (const [cat, data] of Object.entries(extraction.tags)) {
-      const el = document.createElement('span');
-      el.className = 'tag tag-' + data.sentiment;
-      el.id = 'tag-chip-' + cat;
-      el.innerHTML = `<span class="tag-icon">${TAG_ICONS[cat] || '•'}</span>${cat.charAt(0).toUpperCase()+cat.slice(1)}: ${data.sentiment}<button onclick="removeTag('${cat}')" style="background:none;border:none;cursor:pointer;margin-left:6px;color:inherit;opacity:0.6;font-size:14px;padding:0;line-height:1;" title="Remove tag">×</button>`;
-      grid.appendChild(el);
-    }
-  }
+  renderConcernBox(extraction, false);
 
   // AI follow-up
   const followupEl = document.getElementById('ai-followup');
@@ -1629,6 +1614,11 @@ function renderExtractionResult(extraction, patterns, followUp) {
   currentCustomTopics = [];
   document.getElementById('custom-topics-display').innerHTML = '';
   document.getElementById('custom-topic-input').value = '';
+  document.getElementById('custom-topic-detail').value = '';
+  const topicInputArea = document.getElementById('topic-input-area');
+  if (topicInputArea) topicInputArea.style.display = 'none';
+  const topicToggle = document.getElementById('add-topic-toggle');
+  if (topicToggle) topicToggle.textContent = '+ Add a topic';
   loadTopicSuggestions();
 
   document.getElementById('extraction-sandbox-note').textContent = extraction.sandbox
@@ -1654,7 +1644,71 @@ async function removeTag(category) {
   });
 }
 
+// ── Concern box ───────────────────────────────────────────────────────────────
+function renderConcernBox(extraction, isLastEntry) {
+  const box      = document.getElementById('concern-box');
+  const concerns = Object.entries(extraction.tags).filter(([,v]) => v.sentiment === 'concerning');
+  const positives= Object.entries(extraction.tags).filter(([,v]) => v.sentiment === 'positive');
+  const noted    = Object.entries(extraction.tags).filter(([,v]) => v.sentiment === 'noted');
+  const hasTags  = Object.keys(extraction.tags).length > 0;
+  const fixBtn   = `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 10px;" onclick="openCorrectionModal()">Fix something</button>`;
+
+  if (!hasTags) {
+    box.innerHTML = `<p style="color:var(--muted);font-size:14px;margin-bottom:12px;">Nothing specific detected.</p>`;
+    return;
+  }
+
+  if (concerns.length > 0) {
+    const rows = concerns.map(([cat]) =>
+      `<div style="padding:3px 0;font-size:14px;">${TAG_ICONS[cat]||'•'} ${cat.charAt(0).toUpperCase()+cat.slice(1)}</div>`
+    ).join('');
+    const extras = [];
+    if (noted.length)    extras.push(`Noted: ${noted.map(([c])=>c).join(', ')}`);
+    if (positives.length) extras.push(`Positive: ${positives.map(([c])=>c).join(', ')}`);
+    const n = concerns.length;
+    box.innerHTML = `
+      <div style="border:1px solid var(--amber);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;">
+        <div style="font-weight:700;color:var(--amber);margin-bottom:10px;">⚠ ${n} concern${n>1?'s':''} flagged</div>
+        <div style="margin-bottom:${extras.length?'8px':'12px'};">${rows}</div>
+        ${extras.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${extras.join(' · ')}</div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${!isLastEntry ? `<button class="btn btn-primary btn-sm" onclick="confirmTags()">Looks right</button>` : ''}
+          ${fixBtn}
+        </div>
+      </div>`;
+  } else {
+    const parts = [];
+    if (positives.length) parts.push(`Positive: ${positives.map(([c])=>c).join(', ')}`);
+    if (noted.length)     parts.push(`Noted: ${noted.map(([c])=>c).join(', ')}`);
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <span style="color:var(--green);font-weight:600;">✓ Logged</span>
+        <span style="font-size:13px;color:var(--muted);">${parts.join(' · ')}</span>
+        ${fixBtn}
+      </div>`;
+  }
+}
+
+function confirmTags() {
+  const box = document.getElementById('concern-box');
+  const fixBtn = `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 10px;" onclick="openCorrectionModal()">Fix something</button>`;
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+      <span style="color:var(--green);font-weight:600;">✓ Confirmed</span>
+      ${fixBtn}
+    </div>`;
+}
+
 // ── Custom topics ─────────────────────────────────────────────────────────────
+function toggleTopicInput() {
+  const area = document.getElementById('topic-input-area');
+  const btn  = document.getElementById('add-topic-toggle');
+  const open = area.style.display === 'none';
+  area.style.display = open ? '' : 'none';
+  btn.textContent = open ? '− Cancel' : '+ Add a topic';
+  if (open) document.getElementById('custom-topic-input').focus();
+}
+
 async function addCustomTopic() {
   const input  = document.getElementById('custom-topic-input');
   const detail = document.getElementById('custom-topic-detail');
@@ -1674,6 +1728,8 @@ async function addCustomTopic() {
     input.value  = '';
     detail.value = '';
     renderCustomTopics();
+    document.getElementById('topic-input-area').style.display = 'none';
+    document.getElementById('add-topic-toggle').textContent = '+ Add a topic';
   }
 }
 
@@ -2695,10 +2751,9 @@ async function loadAlerts() {
         </div>
       </div>`;
     list.appendChild(el);
-  }
+  });
 
   loadDeletionRequests();
-  });
 }
 
 async function loadAlertBadge() {
@@ -2754,8 +2809,10 @@ async function saveCorrection() {
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({tags: corrected})
   });
+  lastTags = corrected;
   closeCorrectionModal();
-  alert('Correction saved. Your version is recorded alongside the original AI extraction.');
+  const updated = { tags: lastTags, flags: Object.keys(lastTags).filter(k=>lastTags[k].sentiment==='concerning').map(k=>k+'_concern'), emergency: false, note: '' };
+  renderConcernBox(updated, true);
 }
 
 // ── Seed data ─────────────────────────────────────────────────────────────────

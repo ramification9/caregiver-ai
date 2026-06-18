@@ -532,11 +532,12 @@ def mock_extract(note_text):
     if emergency:
         note = "URGENT: Language detected that may indicate a crisis. See alert below."
     elif concerning:
-        note = f"{len(concerning)} concern(s) noted: {', '.join(concerning)}."
+        n = len(concerning)
+        note = f"{n} concern{'s' if n > 1 else ''} noted: {', '.join(concerning)}."
     elif positive:
         note = f"Positive signs today: {', '.join(positive)}."
     elif tags:
-        note = f"{len(tags)} topic(s) logged."
+        note = ""
     else:
         note = "Nothing specific detected — see the follow-up question below."
 
