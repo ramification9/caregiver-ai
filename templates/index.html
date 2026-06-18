@@ -120,11 +120,13 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .pattern-body p { font-size: 14px; color: var(--text); }
 .pattern-count { font-size: 32px; font-weight: 800; color: var(--amber); flex-shrink: 0; margin-left: auto; }
 .no-patterns { background: var(--positive-bg); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--positive-text); font-weight: 600; }
-.ptn-section-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:var(--radius); cursor:pointer; user-select:none; margin-bottom:14px; font-size:11px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; }
-.ptn-section-head .ptn-arrow { font-size:13px; transition:transform 0.2s; }
+.ptn-section-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-radius:var(--radius); cursor:pointer; user-select:none; margin-bottom:4px; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:white; box-shadow:var(--shadow); transition:opacity 0.15s, box-shadow 0.15s; }
+.ptn-section-head:hover { opacity:0.92; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
+.ptn-section-head .ptn-arrow { font-size:11px; background:rgba(255,255,255,0.25); border-radius:4px; padding:3px 8px; letter-spacing:0; font-weight:400; transition:transform 0.2s; white-space:nowrap; }
 .ptn-section-head.collapsed .ptn-arrow { transform:rotate(-90deg); }
-.ptn-section-body { overflow:hidden; transition:max-height 0.25s ease; }
+.ptn-section-body { overflow:hidden; }
 .ptn-section-body.collapsed { display:none; }
+.ptn-section-body:not(.collapsed) { padding-top:14px; margin-bottom:8px; }
 
 #summary-output { display: none; }
 .sum-header { background: var(--navy); color: white; border-radius: var(--radius) var(--radius) 0 0; padding: 20px 24px; }
@@ -2043,14 +2045,14 @@ async function loadPatterns() {
   const list = document.getElementById('patterns-list');
   list.innerHTML = '';
 
-  function makeSection(label, color, bgColor) {
+  function makeSection(label, color) {
     const wrap = document.createElement('div');
-    wrap.style.marginBottom = '8px';
+    wrap.style.marginBottom = '20px';
 
     const head = document.createElement('div');
     head.className = 'ptn-section-head';
-    head.style.cssText = `background:${bgColor};color:${color};`;
-    head.innerHTML = `<span>${label}</span><span class="ptn-arrow">▼</span>`;
+    head.style.background = color;
+    head.innerHTML = `<span>${label}</span><span class="ptn-arrow">▼ tap to open</span>`;
 
     const body = document.createElement('div');
     body.className = 'ptn-section-body collapsed';
@@ -2059,6 +2061,7 @@ async function loadPatterns() {
     head.addEventListener('click', () => {
       const collapsed = body.classList.toggle('collapsed');
       head.classList.toggle('collapsed', collapsed);
+      head.querySelector('.ptn-arrow').textContent = collapsed ? '▼ tap to open' : '▲ tap to close';
     });
 
     wrap.appendChild(head);
@@ -2068,7 +2071,7 @@ async function loadPatterns() {
   }
 
   // ══ PATIENT PATTERNS ══════════════════════════════════════════════════════
-  const patientBody = makeSection('Patient Patterns', 'var(--navy)', '#EBF5FB');
+  const patientBody = makeSection('Patient Patterns', 'var(--navy)');
 
   if (cs.total_entries > 0) {
     const corrEl = document.createElement('div');
@@ -2111,7 +2114,7 @@ async function loadPatterns() {
   });
 
   // ══ CAREGIVER CHECK-INS ═══════════════════════════════════════════════════
-  const cgBody = makeSection('Caregiver Check-Ins', 'var(--green)', '#EAFAF1');
+  const cgBody = makeSection('Caregiver Check-Ins', 'var(--green)');
 
   const wb = d.caregiver_wellbeing;
   if (!wb) {
