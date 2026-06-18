@@ -395,7 +395,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     </div>
 
     <div class="card card-patient">
-      <div class="card-label">Patient Observation</div>
+      <div class="card-label">Step 1 — Patient Observation</div>
       <textarea id="note-input" placeholder="He didn't sleep again last night. Seemed on edge this morning and skipped his PT appointment. Refused his medication at breakfast. Ate a little at dinner…"></textarea>
       <p style="font-size:13px;color:var(--muted);margin-top:10px;">
         Write or speak naturally — sleep, mood, meals, medications, appointments, anything that stood out.
@@ -410,7 +410,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     </div>
 
     <div class="card card-caregiver-entry">
-      <div class="card-label" style="color:var(--green);">Your Check-In</div>
+      <div class="card-label" style="color:var(--green);">Step 2 — Your Check-In</div>
       <p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">
         How are you holding up today?
         <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;">Optional</span>
@@ -1444,7 +1444,14 @@ function stopRecording() {
 // ── Submit note ───────────────────────────────────────────────────────────────
 async function submitNote() {
   const note = document.getElementById('note-input').value.trim();
-  if (!note) { alert('Please write something before submitting.'); return; }
+  if (!note) {
+    const inp = document.getElementById('note-input');
+    inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    inp.focus();
+    inp.style.borderColor = 'var(--red)';
+    setTimeout(() => { inp.style.borderColor = ''; }, 2000);
+    return;
+  }
 
   const btn = document.getElementById('submit-btn');
   btn.innerHTML = '<span class="spinner"></span>Analyzing…';
