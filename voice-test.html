@@ -109,11 +109,12 @@
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const hasSR  = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
-  let isRecording  = false;
+  let isRecording   = false;
   let mediaRecorder = null;
-  let audioChunks  = [];
-  let srInstance   = null;
-  let transcript   = '';
+  let audioChunks   = [];
+  let srInstance    = null;
+  let transcript    = '';
+  let speechUnlocked = false;
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,13 @@
   // ── Mic button handler ────────────────────────────────────────────────────
 
   function handleMic() {
+    // Unlock SpeechSynthesis on first user tap (required by iOS)
+    if (!speechUnlocked) {
+      const u = new SpeechSynthesisUtterance('');
+      window.speechSynthesis.speak(u);
+      speechUnlocked = true;
+      log('SpeechSynthesis unlocked');
+    }
     if (isIOS || !hasSR) {
       isRecording ? stopIOSRecording() : startIOSRecording();
     } else {
