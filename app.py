@@ -1996,6 +1996,20 @@ def seed_data():
     conn.execute("DELETE FROM entries")
     conn.execute("DELETE FROM caregiver_wellbeing")
     conn.execute("DELETE FROM medications")
+    conn.execute("DELETE FROM patients")
+    conn.execute("DELETE FROM caregivers")
+    conn.commit()
+
+    # Seed patient and caregiver
+    conn.execute(
+        "INSERT INTO patients (name, is_veteran, patient_language, start_of_care) VALUES (?, ?, ?, ?)",
+        ("Robert", 1, "es", "2026-03-26")
+    )
+    caregiver_uuid = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO caregivers (name, uuid) VALUES (?, ?)",
+        ("Jimmy", caregiver_uuid)
+    )
     conn.commit()
 
     inserted_entries  = 0
@@ -2199,11 +2213,14 @@ def text_to_speech():
     except Exception:
         return jsonify({'error': 'tts_failed'}), 500
 
+# ── Startup (runs under gunicorn and direct) ───────────────────────────────────
+
+init_db()
+migrate_db()
+
 # ── Run ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    init_db()
-    migrate_db()
     port = int(os.environ.get("PORT", 5050))
     mode = "SANDBOX (keyword rules)" if SANDBOX_MODE else "LIVE (Claude Haiku)"
     print()
