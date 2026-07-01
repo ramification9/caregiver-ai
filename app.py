@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 import sqlite3
 import json
 import random
@@ -9,6 +9,7 @@ import os
 import uuid
 import hashlib
 import secrets
+import io
 
 app = Flask(__name__)
 
@@ -2178,6 +2179,25 @@ def voice_profile():
         "pitch_std": row["pitch_std"],
         "spectral_centroid": row["spectral_centroid"]
     })
+
+# ── Text-to-Speech ─────────────────────────────────────────────────────────────
+
+@app.route('/api/tts', methods=['POST'])
+def text_to_speech():
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()[:500]
+    lang = (data.get('lang') or 'es').strip()[:10]
+    if not text:
+        return jsonify({'error': 'no text'}), 400
+    try:
+        from gtts import gTTS
+        tts = gTTS(text=text, lang=lang, slow=False)
+        buf = io.BytesIO()
+        tts.write_to_fp(buf)
+        buf.seek(0)
+        return send_file(buf, mimetype='audio/mpeg', download_name='tts.mp3')
+    except Exception:
+        return jsonify({'error': 'tts_failed'}), 500
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 

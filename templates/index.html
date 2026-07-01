@@ -517,10 +517,16 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .tc-msg.patient { align-items:flex-start; }
 .tc-msg.caregiver { align-items:flex-end; }
 .tc-msg-name { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); }
-.tc-bubble { max-width:82%; padding:10px 16px; border-radius:18px; font-size:15px; line-height:1.5; color:white; }
+.tc-bubble { max-width:82%; padding:10px 16px; border-radius:18px; font-size:15px; line-height:1.5; color:white; cursor:pointer; user-select:none; -webkit-user-select:none; transition:opacity 0.15s; }
+.tc-bubble:active { opacity:0.8; }
 .tc-msg.patient .tc-bubble { background:var(--navy); border-bottom-left-radius:4px; }
 .tc-msg.caregiver .tc-bubble { background:#2d6a4f; border-bottom-right-radius:4px; }
+.tc-bubble.tc-speaking { outline:3px solid rgba(255,255,255,0.7); animation:pulse 1.2s infinite; }
 .tc-translation { max-width:82%; font-size:12px; color:var(--muted); font-style:italic; line-height:1.5; padding:0 4px; opacity:0.65; }
+.tc-audio-bar { display:none; text-align:center; font-size:13px; font-weight:600; padding:10px 14px; border-radius:10px; margin:8px 0; cursor:pointer; }
+.tc-audio-bar.tc-loading { display:block; background:#EEF2F7; color:var(--muted); }
+.tc-audio-bar.tc-playing { display:block; background:#2d6a4f; color:white; animation:pulse 1.2s infinite; }
+.tc-audio-bar.tc-replay  { display:block; background:var(--navy); color:white; }
 .tc-controls { background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); }
 .tc-who-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:8px; }
 .tc-toggle { display:flex; background:var(--bg); border-radius:10px; padding:3px; gap:3px; margin-bottom:12px; }
@@ -861,9 +867,11 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
         <button class="tc-clear-btn" onclick="clearTranslate()">Clear</button>
       </div>
 
-      <div id="tc-messages" class="tc-window">
+      <div id="tc-messages" class="tc-window" onclick="tcTapAnywhere(event)">
         <div id="tc-empty" class="tc-empty-msg">Select who is speaking below, then tap Speak.</div>
       </div>
+
+      <div id="tc-audio-bar" class="tc-audio-bar" onclick="tcAudioBarTap()"></div>
 
       <div class="tc-controls">
         <div class="tc-who-label">Who is speaking?</div>
@@ -4614,7 +4622,10 @@ let tcCaregiverRec    = null;
 let tcMessages        = [];
 let tcIOSRecorder     = null;
 let tcSpeechUnlocked  = false;
-let tcSessionEntryId = null;
+let tcSessionEntryId  = null;
+let tcCurrentAudio    = null;
+let tcLastTTS         = null;
+let tcSpeakingBubble  = null;
 
 function initTranslateSection() {
   const lang = currentPatient?.patient_language;
@@ -4783,18 +4794,16 @@ function tcResetSpeakBtn() {
 async function tcAddMessage(name, original, translated, isPatient) {
   document.getElementById('tc-empty')?.remove();
 
-  const capName = name.charAt(0).toUpperCase() + name.slice(1);
-  const side    = isPatient ? 'patient' : 'caregiver';
-
-  // Translation = big bubble (what the OTHER person reads)
-  // Original    = subdued reference below
+  const capName     = name.charAt(0).toUpperCase() + name.slice(1);
+  const side        = isPatient ? 'patient' : 'caregiver';
   const englishText = isPatient ? translated : original;
   const nativeText  = isPatient ? original   : translated;
+  const patLang     = currentPatient?.patient_language || 'es';
 
-  const box    = document.createElement('div');
+  const box = document.createElement('div');
   box.className = `tc-msg ${side}`;
 
-  const label  = document.createElement('div');
+  const label = document.createElement('div');
   label.className = 'tc-msg-name';
   label.textContent = capName;
 
@@ -4802,7 +4811,15 @@ async function tcAddMessage(name, original, translated, isPatient) {
   bubble.className = 'tc-bubble';
   bubble.textContent = translated;
 
-  const trans  = document.createElement('div');
+  // Tap any bubble to replay its audio
+  const bubbleSpeakText = translated;
+  const bubbleSpeakLang = isPatient ? 'en' : patLang;
+  bubble.addEventListener('click', e => {
+    e.stopPropagation();
+    tcPlayTTS(bubbleSpeakText, bubbleSpeakLang, bubble);
+  });
+
+  const trans = document.createElement('div');
   trans.className = 'tc-translation';
   trans.textContent = original;
 
@@ -4817,19 +4834,108 @@ async function tcAddMessage(name, original, translated, isPatient) {
   tcMessages.push({ speaker: capName, english: englishText, native: nativeText, isPatient });
   await tcAutoSave();
 
+  // Emergency check first — if emergency, abort audio and show overlay
   if (isPatient && englishText) {
-    checkTranslationEmergency(englishText);
+    const isEmergency = await checkTranslationEmergency(englishText);
+    if (isEmergency) return;
   }
 
-  // Auto read-back: when caregiver speaks, read translation aloud to patient in their language
-  if (!isPatient && translated && window.speechSynthesis) {
-    const patLang = currentPatient?.patient_language;
-    const voiceLang = SPEECH_LANG_MAP[patLang] || 'es-US';
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(translated);
-    u.lang = voiceLang;
-    u.rate = 0.9;
-    window.speechSynthesis.speak(u);
+  // Caregiver spoke → auto-read Spanish translation aloud to blind patient via gTTS
+  if (!isPatient && translated) {
+    tcLastTTS = { text: translated, lang: patLang };
+    tcPlayTTS(translated, patLang, bubble);
+  }
+}
+
+// ── TTS engine (gTTS backend → MP3 → <audio>) ────────────────────────────────
+
+async function tcPlayTTS(text, lang, bubbleEl) {
+  if (!text) return;
+
+  // Stop anything currently playing
+  if (tcCurrentAudio) {
+    tcCurrentAudio.pause();
+    tcCurrentAudio = null;
+  }
+  if (tcSpeakingBubble) {
+    tcSpeakingBubble.classList.remove('tc-speaking');
+    tcSpeakingBubble = null;
+  }
+
+  tcLastTTS = { text, lang };
+  tcSetAudioBar('loading');
+
+  try {
+    const r = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lang })
+    });
+    if (!r.ok) { tcSetAudioBar(false); return; }
+
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    tcCurrentAudio = audio;
+
+    if (bubbleEl) {
+      bubbleEl.classList.add('tc-speaking');
+      tcSpeakingBubble = bubbleEl;
+    }
+    tcSetAudioBar('playing');
+
+    audio.onended = () => {
+      tcCurrentAudio = null;
+      URL.revokeObjectURL(url);
+      if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+      tcSetAudioBar('replay');
+    };
+    audio.onerror = () => {
+      tcCurrentAudio = null;
+      if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+      tcSetAudioBar(false);
+    };
+
+    await audio.play();
+  } catch(e) {
+    console.error('TTS error:', e);
+    if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+    tcSetAudioBar(false);
+  }
+}
+
+function tcSetAudioBar(state) {
+  const bar = document.getElementById('tc-audio-bar');
+  if (!bar) return;
+  bar.className = 'tc-audio-bar';
+  if (!state) return;
+  if (state === 'loading') { bar.classList.add('tc-loading'); bar.textContent = '⏳ Loading audio…'; }
+  if (state === 'playing') { bar.classList.add('tc-playing'); bar.textContent = '🔊 Playing — tap to stop'; }
+  if (state === 'replay')  { bar.classList.add('tc-replay');  bar.textContent = '🔁 Tap anywhere to replay'; }
+}
+
+// Tap messages area = replay last TTS (primary blind-user access point)
+function tcTapAnywhere(event) {
+  if (event.target.closest('.tc-bubble')) return;
+  if (tcCurrentAudio && !tcCurrentAudio.paused) {
+    tcCurrentAudio.pause();
+    tcCurrentAudio = null;
+    if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+    tcSetAudioBar('replay');
+    return;
+  }
+  if (tcLastTTS) tcPlayTTS(tcLastTTS.text, tcLastTTS.lang, null);
+}
+
+// Audio status bar tap = same as tap-anywhere
+function tcAudioBarTap() {
+  if (tcCurrentAudio && !tcCurrentAudio.paused) {
+    tcCurrentAudio.pause();
+    tcCurrentAudio = null;
+    if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+    tcSetAudioBar('replay');
+  } else if (tcLastTTS) {
+    tcPlayTTS(tcLastTTS.text, tcLastTTS.lang, null);
   }
 }
 
@@ -4841,7 +4947,12 @@ async function checkTranslationEmergency(text) {
       body: JSON.stringify({ text })
     });
     const d = await r.json();
-    if (!d.emergency) return;
+    if (!d.emergency) return false;
+
+    // Stop any TTS immediately — emergency takes priority
+    if (tcCurrentAudio) { tcCurrentAudio.pause(); tcCurrentAudio = null; }
+    if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+    tcSetAudioBar(false);
 
     showEmergencyOverlay(d);
 
@@ -4853,10 +4964,15 @@ async function checkTranslationEmergency(text) {
       });
       loadAlertBadge();
     }
-  } catch(e) {}
+    return true;
+  } catch(e) { return false; }
 }
 
 function clearTranslate() {
+  if (tcCurrentAudio) { tcCurrentAudio.pause(); tcCurrentAudio = null; }
+  if (tcSpeakingBubble) { tcSpeakingBubble.classList.remove('tc-speaking'); tcSpeakingBubble = null; }
+  tcLastTTS = null;
+  tcSetAudioBar(false);
   tcMessages = [];
   tcSessionEntryId = null;
   document.getElementById('tc-messages').innerHTML =
