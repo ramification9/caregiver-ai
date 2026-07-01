@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareLog — Voice Sandbox Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #EEF2F7; color: #2C3E50; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+
+  .sandbox-bar { background: #7D6608; color: #FEF9E7; text-align: center; padding: 8px 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; width: 100%; position: fixed; top: 0; left: 0; z-index: 100; }
+
+  .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; width: 100%; max-width: 480px; margin-top: 56px; }
+
+  h1 { font-size: 20px; font-weight: 700; color: #1B4F72; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #6C757D; margin-bottom: 24px; }
+
+  .platform-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-bottom: 20px; }
+  .platform-badge.ios { background: #D5F5E3; color: #1E8449; }
+  .platform-badge.android { background: #EBF5FB; color: #1A5276; }
+
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #6C757D; margin-bottom: 10px; }
+
+  /* Mic button */
+  .btn-mic { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; border-radius: 50px; border: 2px solid #2874A6; background: white; color: #2874A6; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-mic.recording { background: #C0392B; border-color: #C0392B; color: white; animation: pulse 1.2s infinite; }
+  .btn-mic.processing { background: #7D6608; border-color: #7D6608; color: white; }
+  .btn-mic:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+  .recording-prompt { text-align: center; font-size: 13px; color: #C0392B; font-weight: 600; margin-top: 10px; min-height: 20px; }
+
+  /* Transcript box */
+  .transcript-box { margin-top: 20px; background: #F4F6F7; border: 1px solid #D5D8DC; border-radius: 8px; padding: 14px; min-height: 80px; font-size: 15px; color: #2C3E50; line-height: 1.6; }
+  .transcript-box.empty { color: #A0A0A0; font-style: italic; }
+
+  /* Read aloud button */
+  .btn-read { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 50px; border: 2px solid #1E8449; background: white; color: #1E8449; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 14px; transition: all 0.2s; }
+  .btn-read:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-read.speaking { background: #1E8449; color: white; }
+
+  /* Status log */
+  .status-log { margin-top: 20px; background: #1B4F72; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; color: #85C1E9; max-height: 160px; overflow-y: auto; }
+  .status-log p { margin-bottom: 4px; }
+  .status-log p:last-child { color: white; }
+
+  .divider { border: none; border-top: 1px solid #D5D8DC; margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<div class="sandbox-bar">SANDBOX MODE — Voice Feature Test</div>
+
+<div class="card">
+  <h1>CareLog Voice Test</h1>
+  <p class="subtitle">Tests voice input + read-aloud before building into the main app.</p>
+
+  <div id="platform-badge" class="platform-badge">Detecting…</div>
+
+  <div class="section-label">Step 1 — Voice Input</div>
+
+  <button class="btn-mic" id="mic-btn" onclick="handleMic()">
+    <span id="mic-icon">🎙</span>
+    <span id="mic-label">Tap to Speak</span>
+  </button>
+  <div class="recording-prompt" id="recording-prompt"></div>
+
+  <hr class="divider">
+
+  <div class="section-label">Step 2 — Transcript</div>
+  <div class="transcript-box empty" id="transcript-box">Your spoken words will appear here…</div>
+
+  <hr class="divider">
+
+  <div class="section-label">Step 3 — Read Aloud</div>
+  <button class="btn-read" id="read-btn" onclick="readAloud()" disabled>
+    <span id="read-icon">🔊</span>
+    <span id="read-label">Read It Back</span>
+  </button>
+
+  <div class="status-log" id="status-log">
+    <p>» Initializing…</p>
+  </div>
+</div>
+
+<script>
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const hasSR  = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  let isRecording  = false;
+  let mediaRecorder = null;
+  let audioChunks  = [];
+  let srInstance   = null;
+  let transcript   = '';
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  function log(msg) {
+    const box = document.getElementById('status-log');
+    const p = document.createElement('p');
+    p.textContent = '» ' + msg;
+    box.appendChild(p);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function setPlatformBadge() {
+    const badge = document.getElementById('platform-badge');
+    if (isIOS) {
+      badge.textContent = 'iOS — Whisper.js path (sandbox)';
+      badge.className = 'platform-badge ios';
+      log('Platform: iOS detected — using MediaRecorder sandbox flow');
+    } else if (hasSR) {
+      badge.textContent = 'Android / Desktop — SpeechRecognition';
+      badge.className = 'platform-badge android';
+      log('Platform: Android/Desktop — using webkitSpeechRecognition');
+    } else {
+      badge.textContent = 'Unknown — no speech support detected';
+      badge.className = 'platform-badge';
+      log('Warning: no speech API detected on this device');
+    }
+  }
+
+  // ── Mic button handler ────────────────────────────────────────────────────
+
+  function handleMic() {
+    if (isIOS || !hasSR) {
+      isRecording ? stopIOSRecording() : startIOSRecording();
+    } else {
+      isRecording ? stopAndroidRecording() : startAndroidRecording();
+    }
+  }
+
+  // ── iOS flow — MediaRecorder → fake Whisper sandbox ──────────────────────
+
+  async function startIOSRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.start();
+      isRecording = true;
+      setMicState('recording');
+      log('Microphone open — recording started');
+    } catch (err) {
+      log('Mic error: ' + err.message);
+    }
+  }
+
+  function stopIOSRecording() {
+    if (!mediaRecorder) return;
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    isRecording = false;
+    setMicState('processing');
+    log('Recording stopped — processing… (sandbox: 2s fake delay)');
+
+    setTimeout(() => {
+      // Sandbox: fake transcript instead of real Whisper
+      const fakeTranscript = 'Robert did not sleep well last night. He seemed anxious at breakfast and refused his morning medication.';
+      setTranscript(fakeTranscript);
+      setMicState('idle');
+      log('Sandbox transcript injected — in production, Whisper.js would transcribe the audio');
+    }, 2000);
+  }
+
+  // ── Android / Desktop flow — real SpeechRecognition ──────────────────────
+
+  function startAndroidRecording() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    srInstance = new SR();
+    srInstance.continuous = true;
+    srInstance.interimResults = true;
+    srInstance.lang = 'en-US';
+
+    srInstance.onstart = () => {
+      isRecording = true;
+      setMicState('recording');
+      log('SpeechRecognition started — speak now');
+    };
+
+    srInstance.onresult = e => {
+      let final = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+      }
+      if (final.trim()) {
+        setTranscript(final.trim());
+        log('Transcript updated');
+      }
+    };
+
+    srInstance.onerror = e => { log('SR error: ' + e.error); setMicState('idle'); };
+    srInstance.onend  = () => { if (isRecording) { isRecording = false; setMicState('idle'); } };
+
+    srInstance.start();
+  }
+
+  function stopAndroidRecording() {
+    if (srInstance) { srInstance.stop(); srInstance = null; }
+    isRecording = false;
+    setMicState('idle');
+    log('SpeechRecognition stopped');
+  }
+
+  // ── UI state helpers ──────────────────────────────────────────────────────
+
+  function setMicState(state) {
+    const btn    = document.getElementById('mic-btn');
+    const icon   = document.getElementById('mic-icon');
+    const label  = document.getElementById('mic-label');
+    const prompt = document.getElementById('recording-prompt');
+
+    btn.className = 'btn-mic';
+    btn.disabled  = false;
+
+    if (state === 'recording') {
+      btn.classList.add('recording');
+      icon.textContent  = '⏹';
+      label.textContent = 'Tap to Stop';
+      prompt.textContent = isIOS ? '🔴 Recording… tap Stop when done' : '🔴 Listening… tap Stop when done';
+    } else if (state === 'processing') {
+      btn.classList.add('processing');
+      btn.disabled = true;
+      icon.textContent  = '⏳';
+      label.textContent = 'Processing…';
+      prompt.textContent = 'Transcribing your audio…';
+    } else {
+      icon.textContent  = '🎙';
+      label.textContent = 'Tap to Speak';
+      prompt.textContent = '';
+    }
+  }
+
+  function setTranscript(text) {
+    transcript = text;
+    const box = document.getElementById('transcript-box');
+    box.textContent = text;
+    box.classList.remove('empty');
+    document.getElementById('read-btn').disabled = false;
+    log('Transcript ready — tap Read It Back to hear it');
+  }
+
+  // ── Read aloud ────────────────────────────────────────────────────────────
+
+  function readAloud() {
+    if (!transcript) return;
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setReadState(false);
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(transcript);
+    u.rate = 0.95;
+    u.onstart = () => { setReadState(true);  log('SpeechSynthesis — reading aloud'); };
+    u.onend   = () => { setReadState(false); log('Read aloud complete'); };
+    u.onerror = e => { setReadState(false);  log('Read aloud error: ' + e.error); };
+    window.speechSynthesis.speak(u);
+  }
+
+  function setReadState(speaking) {
+    const btn  = document.getElementById('read-btn');
+    const icon = document.getElementById('read-icon');
+    const lbl  = document.getElementById('read-label');
+    if (speaking) {
+      btn.classList.add('speaking');
+      icon.textContent = '⏹';
+      lbl.textContent  = 'Tap to Stop';
+    } else {
+      btn.classList.remove('speaking');
+      icon.textContent = '🔊';
+      lbl.textContent  = 'Read It Back';
+    }
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+
+  setPlatformBadge();
+  log('Ready — tap the mic button to begin');
+</script>
+</body>
+</html>
