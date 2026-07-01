@@ -4690,7 +4690,7 @@ function tcInitRecs() {
   tcCaregiverRec = tcBuildRec('en-US', 'en', lang, false);
 }
 
-async function tcSpeakIOS() {
+async function tcSpeakRecorder() {
   const lang = currentPatient?.patient_language;
   const isPatient = tcSpeaker === 'patient';
 
@@ -4717,8 +4717,13 @@ async function tcSpeakIOS() {
       btn.disabled = true;
       try {
         const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
-        const speechLang = isPatient ? lang : 'en';
-        const original = await window.whisperTranscribe(blob, speechLang);
+        const sttLang = isPatient ? (SPEECH_LANG_MAP[lang] || lang) : 'en-US';
+        const fd = new FormData();
+        fd.append('audio', blob, 'audio.' + (mimeType.includes('mp4') ? 'm4a' : 'webm'));
+        fd.append('lang', sttLang);
+        const r = await fetch('/api/stt', { method: 'POST', body: fd });
+        const d = await r.json();
+        const original = d.text?.trim();
         if (original) {
           const fromLang = isPatient ? lang : 'en';
           const toLang   = isPatient ? 'en' : lang;
@@ -4726,7 +4731,7 @@ async function tcSpeakIOS() {
           const speakerName = isPatient ? currentPatient.name : (currentCaregiver?.name || 'You');
           tcAddMessage(speakerName, original, translated, isPatient);
         }
-      } catch(e) { console.error('iOS translate error:', e); }
+      } catch(e) { console.error('STT error:', e); }
       finally { btn.disabled = false; tcLive = false; tcResetSpeakBtn(); }
     };
 
@@ -4755,10 +4760,8 @@ function tcSpeak() {
     tcSpeechUnlocked = true;
   }
 
-  if (!tcHasSR || tcIsIOS) {
-    tcSpeakIOS();
-    return;
-  }
+  tcSpeakRecorder();
+  return;
 
   if (tcLive) {
     try { (tcSpeaker === 'patient' ? tcPatientRec : tcCaregiverRec)?.stop(); } catch(e) {}

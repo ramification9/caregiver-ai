@@ -2193,6 +2193,26 @@ def voice_profile():
         "spectral_centroid": row["spectral_centroid"]
     })
 
+# ── Speech-to-Text ─────────────────────────────────────────────────────────────
+
+@app.route('/api/stt', methods=['POST'])
+def speech_to_text():
+    lang = request.form.get('lang', 'en-US').strip()[:10]
+    audio_file = request.files.get('audio')
+    if not audio_file:
+        return jsonify({'error': 'no audio'}), 400
+    try:
+        import speech_recognition as sr
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(audio_file) as source:
+            audio_data = recognizer.record(source)
+        text = recognizer.recognize_google(audio_data, language=lang)
+        return jsonify({'text': text})
+    except sr.UnknownValueError:
+        return jsonify({'text': ''})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # ── Translation ────────────────────────────────────────────────────────────────
 
 _translation_cache = {}
