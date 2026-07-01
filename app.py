@@ -14,8 +14,9 @@ app = Flask(__name__)
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 
-SANDBOX_MODE = True   # set False and implement live_extract() to go live
-DB_PATH = os.path.join(os.path.dirname(__file__), "caregiver.db")
+SANDBOX_MODE = os.environ.get("SANDBOX_MODE", "true").lower() != "false"
+_db_default  = os.path.join(os.path.dirname(__file__), "caregiver.db")
+DB_PATH      = os.environ.get("DB_PATH", _db_default)
 
 # ── Database ───────────────────────────────────────────────────────────────────
 
@@ -135,10 +136,34 @@ def migrate_db():
     if "confirm_code" not in audit_cols:
         conn.execute("ALTER TABLE deletion_audit ADD COLUMN confirm_code TEXT DEFAULT NULL")
         conn.commit()
+    if "note_type" not in entry_cols:
+        conn.execute("ALTER TABLE entries ADD COLUMN note_type TEXT DEFAULT 'observation'")
+        conn.commit()
+    patient_cols = [row[1] for row in conn.execute("PRAGMA table_info(patients)").fetchall()]
+    if "patient_language" not in patient_cols:
+        conn.execute("ALTER TABLE patients ADD COLUMN patient_language TEXT DEFAULT NULL")
+        conn.commit()
+    if "conditions" not in patient_cols:
+        conn.execute("ALTER TABLE patients ADD COLUMN conditions TEXT DEFAULT NULL")
+        conn.commit()
     alert_cols2 = [row[1] for row in conn.execute("PRAGMA table_info(alerts)").fetchall()]
     if "is_deleted" not in alert_cols2:
         conn.execute("ALTER TABLE alerts ADD COLUMN is_deleted INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE alerts ADD COLUMN deleted_at TEXT DEFAULT NULL")
+        conn.commit()
+    vp_tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='voice_profiles'").fetchone()
+    if not vp_tables:
+        conn.execute("""CREATE TABLE voice_profiles (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at        TEXT DEFAULT (datetime('now','localtime')),
+            caregiver_id      TEXT NOT NULL,
+            phrase_text       TEXT,
+            pitch_mean        REAL DEFAULT 0,
+            pitch_std         REAL DEFAULT 0,
+            energy_mean       REAL DEFAULT 0,
+            spectral_centroid REAL DEFAULT 0,
+            freq_profile      TEXT DEFAULT NULL
+        )""")
         conn.commit()
     wb_tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='caregiver_wellbeing'").fetchone()
     if not wb_tables:
@@ -231,13 +256,35 @@ SELF_REPORT_PHRASES = [
 ]
 
 MENTAL_EMERGENCY_PHRASES = [
+    # third-person — caregiver observing
     "wants to die", "want to die", "wants to end it", "end it all",
     "kill himself", "kill herself", "killing himself", "killing herself",
     "hurt himself", "hurt herself", "hurting himself", "hurting herself",
     "suicidal", "suicide", "taking his life", "taking her life",
     "no reason to live", "doesn't want to live", "doesn't want to be here",
     "not worth living", "better off dead", "better off without",
-    "self-harm", "self harm"
+    "self-harm", "self harm",
+    # first-person — patient speaking directly (translator use case)
+    "kill myself", "killing myself", "want to kill myself", "going to kill myself",
+    "hurt myself", "hurting myself", "want to hurt myself",
+    "end my life", "take my life", "take my own life", "going to end my life",
+    "i want to die", "i don't want to live", "i do not want to live",
+    "i don't want to be here", "i do not want to be here",
+    "i don't want to be alive", "i want to be dead",
+    "no point in living", "no reason to go on", "nothing to live for",
+    "going to end it", "planning to end it",
+    # bridge / jumping — explicit suicidal method
+    "jump off the bridge", "jump off a bridge", "jump from the bridge", "jump from a bridge",
+    "jumping off the bridge", "jumping off a bridge", "jumping from the bridge",
+    "jump off the roof", "jump off a roof", "jump off a building", "jump off the building",
+    "jump head first", "head first off the bridge", "head first off a bridge",
+    "jumper from bridge", "off the bridge head first",
+    "going to jump", "going to jump off", "planning to jump",
+    "throw myself off", "throw myself from",
+    # coded / indirect
+    "not going to be around", "won't be around much longer", "wont be around much longer",
+    "goodbye forever", "last goodbye", "no one will miss me",
+    "can't go on", "cant go on", "can't do this anymore", "cant do this anymore",
 ]
 
 PHYSICAL_EMERGENCY_PHRASES = [
@@ -265,23 +312,29 @@ PHYSICAL_EMERGENCY_PHRASES = [
     "can't move him", "can't move her", "cant move him", "cant move her",
     "don't move him", "don't move her", "dont move him", "dont move her",
     "afraid to move", "scared to move",
-    # overdose
+    # overdose — third-person and first-person
     "overdose", "drug overdose",
+    "took too many pills", "took all his pills", "took all her pills",
+    "took all my pills", "took too many of my", "i took too many",
+    "swallowed too many", "swallowed a bottle", "swallowed all my",
+    "took an overdose", "i took an overdose", "took in overdose",
     # self-harm with injury — physical AND mental, treat as physical emergency
     "slit his wrist", "slit her wrist", "slit his wrists", "slit her wrists",
+    "slit my wrist", "slit my wrists",
     "cut his wrist", "cut her wrist", "cut his wrists", "cut her wrists",
+    "cut my wrist", "cut my wrists",
     "cut himself", "cut herself", "cutting himself", "cutting herself",
+    "cut myself", "cutting myself",
     "stabbed himself", "stabbed herself", "shot himself", "shot herself",
+    "stabbed myself", "shot myself",
     "hung himself", "hung herself", "hanging himself", "hanging herself",
+    "hung myself", "hanging myself",
     "tried to hang", "attempted suicide", "suicide attempt",
-    "took too many pills", "took all his pills", "took all her pills",
-    "swallowed too many", "swallowed a bottle"
 ]
 
 EXTRACTION_RULES = {
     "sleep": {
         "concerning": [
-            # caregiver reporting on veteran
             "didn't sleep", "couldn't sleep", "didn't get much sleep", "barely slept",
             "up all night", "was up all night", "awake all night", "up most of the night",
             "up at 2", "up at 3", "up at 4", "up at 1", "woke up at 2", "woke up at 3",
@@ -289,7 +342,13 @@ EXTRACTION_RULES = {
             "restless night", "bad night", "nightmare", "nightmares", "thrashing",
             "insomnia", "poor sleep", "not sleeping", "slept maybe", "slept only",
             "kept waking", "couldn't get him to sleep", "couldn't get her to sleep",
-            "was up most", "no sleep"
+            "was up most", "no sleep",
+            # PTSD-specific
+            "night sweats", "woke up drenched", "soaked the sheets", "soaked the bed",
+            "woke up in a sweat", "drenched in sweat",
+            # depression-specific (opposite direction — oversleeping)
+            "sleeping all day", "slept all day", "can't get out of bed", "won't get out of bed",
+            "wouldn't get up", "stayed in bed all day", "in bed all day"
         ],
         "positive": [
             "slept well", "slept through", "slept through the night", "good sleep",
@@ -302,7 +361,6 @@ EXTRACTION_RULES = {
     },
     "mood": {
         "concerning": [
-            # third person — caregiver describing veteran's mood
             "on edge", "seemed on edge", "was on edge",
             "anxious", "anxiety", "agitated", "seemed agitated", "was agitated",
             "angry", "got angry", "was angry", "irritable", "seemed irritable",
@@ -319,7 +377,11 @@ EXTRACTION_RULES = {
             "hypervigilant", "jumpy", "startled easily",
             "snapped at me", "snapped at", "lashed out", "shut down",
             "couldn't reach him", "couldn't reach her",
-            "wouldn't respond", "wouldn't engage", "shut himself off", "shut herself off"
+            "wouldn't respond", "wouldn't engage", "shut himself off", "shut herself off",
+            # veteran-specific
+            "got triggered", "something triggered him", "something triggered her",
+            "triggered today", "flat affect", "no expression", "emotionless",
+            "just staring", "tearful", "weeping quietly", "staring at the wall"
         ],
         "positive": [
             "calm", "was calm", "seemed calm", "happy", "seemed happy",
@@ -554,21 +616,16 @@ def mock_extract(note_text):
     }
 
 def claude_extract(note_text):
-    """
-    Production extraction using Claude Haiku.
-    Flip SANDBOX_MODE = False and implement this to go live.
-
     import anthropic
-    client = anthropic.Anthropic()
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": note_text}]
     )
-    return parse_claude_response(response)
-    """
-    raise NotImplementedError("Set SANDBOX_MODE = False and implement Claude API call here.")
+    raw = response.content[0].text if response.content else "{}"
+    return parse_claude_response(raw)
 
 def extract_note(note_text):
     if SANDBOX_MODE:
@@ -655,12 +712,13 @@ def detect_patterns(days=7, threshold=3):
     conn = get_db()
     cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     rows = conn.execute(
-        "SELECT extracted_tags FROM entries WHERE created_at >= ? AND is_emergency_flagged = 0",
+        "SELECT DATE(created_at) AS day, extracted_tags FROM entries WHERE created_at >= ? AND is_emergency_flagged = 0",
         (cutoff,)
     ).fetchall()
     conn.close()
 
     counts = {}
+    dates  = {}
     for row in rows:
         try:
             tags = json.loads(row["extracted_tags"] or "{}")
@@ -669,8 +727,8 @@ def detect_patterns(days=7, threshold=3):
         for cat, data in tags.items():
             if data.get("sentiment") == "concerning":
                 counts[cat] = counts.get(cat, 0) + 1
+                dates.setdefault(cat, set()).add(row["day"])
 
-    patterns = []
     label_map = {
         "sleep": "Sleep disruption",
         "mood": "Mood concerns",
@@ -681,6 +739,7 @@ def detect_patterns(days=7, threshold=3):
         "physical": "Physical symptoms",
         "behavior": "Behavioral concerns"
     }
+    patterns = []
     for cat, count in counts.items():
         if count >= threshold:
             patterns.append({
@@ -689,6 +748,7 @@ def detect_patterns(days=7, threshold=3):
                 "count": count,
                 "days": days,
                 "threshold": threshold,
+                "dates": sorted(dates.get(cat, [])),
                 "message": f"{label_map.get(cat, cat.title())} flagged {count} times in the last {days} days."
             })
 
@@ -701,14 +761,25 @@ def build_checkin():
     conn = get_db()
     has_entries = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
     patient_row = conn.execute("SELECT name FROM patients LIMIT 1").fetchone()
+    recent_ratings = conn.execute(
+        "SELECT rating FROM caregiver_wellbeing ORDER BY created_at DESC LIMIT 3"
+    ).fetchall()
     conn.close()
 
     name = patient_row["name"] if patient_row else None
     they = name if name else "he/she"
 
+    caregiver_note = None
+    if recent_ratings:
+        low_count = sum(1 for r in recent_ratings if r["rating"] <= 2)
+        if low_count >= 2:
+            caregiver_note = "You've been rating yourself low for a few days. How are you holding up today?"
+        elif recent_ratings[0]["rating"] <= 2:
+            caregiver_note = "You had a hard day yesterday. Checking in on you too — not just the patient."
+
     if not has_entries:
         greeting = f"Welcome. When you're ready, log how today went{' for ' + name if name else ''}."
-        return {"greeting": greeting, "context": None}
+        return {"greeting": greeting, "context": None, "caregiver_note": caregiver_note}
 
     if patterns:
         top = patterns[0]
@@ -724,9 +795,9 @@ def build_checkin():
         }
         msg = greetings.get(top["category"],
               f"You've had concerns about {top['label'].lower()} this week. How are things today?")
-        return {"greeting": msg, "context": top}
+        return {"greeting": msg, "context": top, "caregiver_note": caregiver_note}
 
-    return {"greeting": f"Welcome back. How are things going today{' with ' + name if name else ''}?", "context": None}
+    return {"greeting": f"Welcome back. How are things going today{' with ' + name if name else ''}?", "context": None, "caregiver_note": caregiver_note}
 
 # ── Summary Generator ──────────────────────────────────────────────────────────
 
@@ -925,11 +996,37 @@ def get_patient():
     conn.close()
     if not row:
         return jsonify({"patient": None})
+    conn2 = get_db()
+    first_entry = conn2.execute("SELECT MIN(DATE(created_at)) as d FROM entries").fetchone()["d"]
+    total_entries = conn2.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+    last_entry = conn2.execute("SELECT MAX(DATE(created_at)) as d FROM entries").fetchone()["d"]
+    alert_counts = {r["alert_type"]: r["n"] for r in conn2.execute(
+        "SELECT alert_type, COUNT(*) as n FROM alerts WHERE is_deleted=0 OR is_deleted IS NULL GROUP BY alert_type"
+    ).fetchall()}
+    caregiver = conn2.execute("SELECT name, relationship FROM caregivers ORDER BY id LIMIT 1").fetchone()
+    active_meds = conn2.execute(
+        "SELECT name, dosage, frequency, scheduled_time, notes FROM medications WHERE is_active=1 ORDER BY name"
+    ).fetchall()
+    conn2.close()
+
+    from datetime import date
+    days_in_care = (date.today() - date.fromisoformat(first_entry)).days + 1 if first_entry else 0
+
     return jsonify({"patient": {
-        "id": row["id"],
-        "name": row["name"],
-        "is_veteran": bool(row["is_veteran"]),
-        "local_crisis_number": row["local_crisis_number"]
+        "id":                   row["id"],
+        "name":                 row["name"],
+        "is_veteran":           bool(row["is_veteran"]),
+        "local_crisis_number":  row["local_crisis_number"],
+        "patient_language":     row["patient_language"],
+        "conditions":           row["conditions"],
+        "first_entry":          first_entry,
+        "last_entry":           last_entry,
+        "days_in_care":         days_in_care,
+        "total_entries":        total_entries,
+        "alert_counts":         alert_counts,
+        "caregiver_name":       caregiver["name"] if caregiver else None,
+        "caregiver_relationship": caregiver["relationship"] if caregiver else None,
+        "active_medications":   [dict(m) for m in active_meds],
     }})
 
 @app.route("/api/patient", methods=["POST"])
@@ -940,18 +1037,20 @@ def save_patient():
         return jsonify({"error": "Name is required."}), 400
     is_veteran = 1 if data.get("is_veteran") else 0
     local_crisis_number = (data.get("local_crisis_number") or "").strip() or None
+    patient_language = (data.get("patient_language") or "").strip() or None
+    conditions = (data.get("conditions") or "").strip() or None
 
     conn = get_db()
     existing = conn.execute("SELECT id FROM patients LIMIT 1").fetchone()
     if existing:
         conn.execute(
-            "UPDATE patients SET name=?, is_veteran=?, local_crisis_number=? WHERE id=?",
-            (name, is_veteran, local_crisis_number, existing["id"])
+            "UPDATE patients SET name=?, is_veteran=?, local_crisis_number=?, patient_language=?, conditions=? WHERE id=?",
+            (name, is_veteran, local_crisis_number, patient_language, conditions, existing["id"])
         )
     else:
         conn.execute(
-            "INSERT INTO patients (name, is_veteran, local_crisis_number) VALUES (?,?,?)",
-            (name, is_veteran, local_crisis_number)
+            "INSERT INTO patients (name, is_veteran, local_crisis_number, patient_language, conditions) VALUES (?,?,?,?,?)",
+            (name, is_veteran, local_crisis_number, patient_language, conditions)
         )
     conn.commit()
     conn.close()
@@ -1207,6 +1306,7 @@ def save_entry():
     if not note:
         return jsonify({"error": "Note cannot be empty."}), 400
 
+    note_type = data.get("note_type", "observation")
     extraction = extract_note(note)
 
     conn = get_db()
@@ -1214,10 +1314,11 @@ def save_entry():
     patient_name = patient_row["name"] if patient_row else None
 
     cur = conn.execute(
-        "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase) VALUES (?, ?, ?, ?)",
+        "INSERT INTO entries (raw_note, extracted_tags, is_emergency_flagged, emergency_phrase, note_type) VALUES (?, ?, ?, ?, ?)",
         (note, json.dumps(extraction["tags"]),
          1 if extraction["emergency"] else 0,
-         extraction.get("emergency_phrase"))
+         extraction.get("emergency_phrase"),
+         note_type)
     )
     entry_id = cur.lastrowid
 
@@ -1254,18 +1355,53 @@ def save_entry():
     follow_up = generate_follow_up(extraction["tags"], patient_name)
     return jsonify({"id": entry_id, "extraction": extraction, "patterns": patterns, "follow_up": follow_up})
 
+@app.route("/api/entries/dates", methods=["GET"])
+def get_entry_dates():
+    """Return all dates that have entries with summary metadata."""
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT DATE(e.created_at) AS day,
+               COUNT(DISTINCT e.id) AS entry_count,
+               MAX(e.is_emergency_flagged) AS has_emergency,
+               SUM(CASE WHEN e.note_type='translation' THEN 1 ELSE 0 END) AS has_translation,
+               COALESCE((
+                 SELECT 1 FROM alerts a
+                 WHERE DATE(a.created_at) = DATE(e.created_at)
+                   AND a.alert_type='pattern'
+                   AND a.is_deleted=0
+                 LIMIT 1
+               ), 0) AS has_pattern
+        FROM entries e
+        GROUP BY DATE(e.created_at)
+        ORDER BY day
+    """).fetchall()
+    conn.close()
+    return jsonify([{
+        "date":            r["day"],
+        "count":           r["entry_count"],
+        "has_emergency":   bool(r["has_emergency"]),
+        "has_translation": bool(r["has_translation"]),
+        "has_pattern":     bool(r["has_pattern"])
+    } for r in rows])
+
 @app.route("/api/entries", methods=["GET"])
 def get_entries():
-    limit  = int(request.args.get("limit", 20))
-    offset = int(request.args.get("offset", 0))
-    conn   = get_db()
-    rows   = conn.execute(
-        "SELECT id, created_at, raw_note, extracted_tags, corrected_tags, custom_tags, is_emergency_flagged, caregiver_rating FROM entries ORDER BY created_at DESC LIMIT ? OFFSET ?",
-        (limit, offset)
-    ).fetchall()
-    total = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
-    conn.close()
+    conn  = get_db()
+    dates_param = request.args.get("dates")
+    SEL = "SELECT id, created_at, raw_note, extracted_tags, corrected_tags, custom_tags, is_emergency_flagged, caregiver_rating, note_type FROM entries"
 
+    if dates_param:
+        dates = [d.strip() for d in dates_param.split(",") if d.strip()]
+        placeholders = ",".join("?" * len(dates))
+        rows  = conn.execute(f"{SEL} WHERE DATE(created_at) IN ({placeholders}) ORDER BY created_at ASC", dates).fetchall()
+        total = len(rows)
+    else:
+        limit  = int(request.args.get("limit", 20))
+        offset = int(request.args.get("offset", 0))
+        rows   = conn.execute(f"{SEL} ORDER BY created_at ASC LIMIT ? OFFSET ?", (limit, offset)).fetchall()
+        total  = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+
+    conn.close()
     return jsonify({
         "entries": [{
             "id": r["id"],
@@ -1275,10 +1411,55 @@ def get_entries():
             "corrected_tags": json.loads(r["corrected_tags"]) if r["corrected_tags"] else None,
             "custom_tags": json.loads(r["custom_tags"] or "[]"),
             "is_emergency": bool(r["is_emergency_flagged"]),
-            "caregiver_rating": r["caregiver_rating"]
+            "caregiver_rating": r["caregiver_rating"],
+            "note_type": r["note_type"] or "observation"
         } for r in rows],
         "total": total
     })
+
+@app.route("/api/entry/<int:entry_id>/update-note", methods=["PUT"])
+def update_entry_note(entry_id):
+    data = request.get_json()
+    note = (data.get("note") or "").strip()
+    if not note:
+        return jsonify({"error": "Note required"}), 400
+    conn = get_db()
+    conn.execute("UPDATE entries SET raw_note = ? WHERE id = ?", (note, entry_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/detect-emergency", methods=["POST"])
+def detect_emergency_text():
+    data = request.get_json() or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"emergency": False})
+    result = extract_note(text)
+    return jsonify({
+        "emergency": bool(result.get("emergency")),
+        "emergency_type": result.get("emergency_type"),
+        "emergency_phrase": result.get("emergency_phrase"),
+    })
+
+@app.route("/api/entry/<int:entry_id>/flag-emergency", methods=["POST"])
+def flag_emergency_entry(entry_id):
+    data   = request.get_json() or {}
+    etype  = (data.get("emergency_type") or "mental")
+    phrase = (data.get("emergency_phrase") or "")
+    conn   = get_db()
+    conn.execute(
+        "UPDATE entries SET is_emergency_flagged=1, emergency_phrase=? WHERE id=?",
+        (phrase, entry_id)
+    )
+    msg = f"Emergency language detected in translation: \"{phrase}\""
+    conn.execute(
+        "INSERT INTO alerts (entry_id, alert_type, alert_message) VALUES (?, ?, ?)",
+        (entry_id, etype, msg)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route("/api/entry/<int:entry_id>/correct", methods=["PUT"])
 def correct_entry(entry_id):
@@ -1608,86 +1789,408 @@ def get_deletion_requests():
 
 @app.route("/api/seed", methods=["POST"])
 def seed_data():
-    """Load realistic sample entries for demo/testing. Only available in sandbox mode."""
+    """Load 120-day realistic sample data with pattern waves, crises, and violence. Sandbox only."""
     if not SANDBOX_MODE:
         return jsonify({"error": "Seed only available in sandbox mode."}), 403
 
     from datetime import datetime, timedelta
     today = datetime.now()
+
     def dts(days_ago, hour=20, minute=0):
         d = today - timedelta(days=days_ago)
         return d.strftime(f"%Y-%m-%d {hour:02d}:{minute:02d}:00")
 
+    # ── 120-DAY ARC ─────────────────────────────────────────────────────────────
+    # Robert (veteran, PTSD, chronic back pain) cared for by Jimmy.
+    # Four pattern waves, two MH crises, one third-party violence incident.
+    # Pattern waves: Sleep/Mood (days 105-99), Medication refusal (days 82-76),
+    #   Physical/Appetite (days 61-54), Sleep/Mood wave 2 (days 49-42).
+    # Crises draw on the patterns that precede them.
+
     sample_notes = [
-        (dts(13, 20, 14), "He didn't sleep again last night, maybe two hours at most. Seemed on edge all morning. Refused his medication at breakfast and wouldn't say why. Ate a little at dinner but picked at it."),
-        (dts(12, 21,  2), "Better day today. Slept through the night which hasn't happened in a while. Took his medication without any issues. Good appetite at lunch and dinner. Seemed more relaxed, even sat outside for a bit."),
-        (dts(11, 20, 45), "Mood was low all day. Didn't want to talk, stayed in his room most of the morning. Skipped his PT appointment — said he didn't feel up to it. Ate a full dinner though."),
-        (dts(10, 21, 30), "Rough night again, kept waking up. Seemed on edge and irritable this morning, snapped at me when I brought his medication. Eventually took it but it took about 20 minutes. Missed lunch, ate dinner."),
-        (dts( 9, 20, 10), "He complained of pain in his lower back, said it has been building for a few days. Walked slowly, seemed uncomfortable. Took his meds on time. Ate well. Called the VA to schedule a follow-up."),
-        (dts( 8, 21, 15), "Good day overall. Slept well, woke up on his own around 8. In a good mood, talked more than usual. Kept his PT appointment and came back saying it went well. Ate everything at dinner."),
-        (dts( 7, 20, 55), "Didn't sleep much. Withdrew most of the day, wouldn't come out of his room for lunch. Refused his meds in the morning and again at night. Seemed distant, couldn't reach him when I tried to talk."),
-        (dts( 6, 21, 40), "Woke up agitated. During lunch he said he doesn't want to be here anymore and that things aren't going to get better. I stayed with him and called the VA crisis line after."),
-        (dts( 5, 20, 30), "Quiet day after yesterday. He was calmer but still withdrawn. Took his medication without a fight, which was good. Didn't eat much. The VA called back to check in and he talked to them briefly."),
-        (dts( 4, 21,  0), "Noticeably better today. Kept his PT appointment, first time in two weeks. Seemed lighter when he got back. Good appetite. Slept well last night. Had a phone call with his brother."),
-        (dts( 3, 20, 20), "Sleep was bad again, restless night. Mood was low in the morning. Took his meds but complained about them. Ate breakfast, skipped lunch. Seemed to stabilize by evening."),
-        (dts( 2, 21, 10), "Refused his medication again this morning, said they make him feel foggy. Missed his VA appointment, said he forgot. Appetite okay at dinner. Mood flat but not agitated."),
-        (dts( 1, 20, 50), "He took a fall getting out of the shower this morning and hit his head on the towel bar. Seemed okay, no loss of consciousness, but I watched him closely all day. Took his meds. Ate well. Called the nurse line to report it."),
-        (dts( 0, 20,  0), "Slept about five hours, better than the last few nights. Mood was okay this morning. Took his medication with breakfast without any issues. Ate a full lunch. PT appointment is tomorrow and he said he plans to go."),
+        # ── PHASE 1 — Days 120–107: Onboarding & Baseline ─────────────────────
+        (dts(120,19,10), "First day with Robert. Guarded at first but cooperative throughout. Took his medication at breakfast without issues. Ate a full lunch and dinner. Walked with me to the mailbox — slow but willing. Back pain is present but he says it's manageable. His room is organized, military neat. He showed me where his medications are kept and his VA paperwork. Quiet start."),
+        (dts(119,20,30), "Slept okay by his account — around five or six hours. Mood was calm this morning. Took his medication without prompting. Ate well at every meal. He asked about his upcoming VA appointments. Reminisced about his service. Good first full day. No concerns."),
+        (dts(117,20, 0), "Good day. He was more talkative than expected — told a long story about basic training. Took his medication at breakfast. Ate a full lunch and strong dinner. No pain complaints today. Said he slept reasonably well. Getting used to the routine."),
+        (dts(116,21,15), "Decent day. Mood was calm. He took his medication on time. Good appetite at lunch and dinner. Back pain at a two — his baseline. He asked about the veteran group program at the VA. His daughter called in the evening and he seemed lifted after."),
+        (dts(115,20, 0), "VA appointment today. He came back quieter than when he left. Didn't want to talk about what was discussed. Took his medication after the appointment. Light lunch, better at dinner. VA visits seem to weigh on him emotionally. Stayed close this evening."),
+        (dts(113,20,45), "Better day. Slept well according to him. Mood was steady. Took his medication without prompting. Good appetite. He worked on a letter to his brother — dictated while I wrote. He seemed glad to have something purposeful to do."),
+        (dts(111,20, 0), "He mentioned nightmares on and off for years but said they've been more frequent lately. Was tired but cooperative. Took his medication. Ate reasonably well. Mood was subdued. I noted the sleep mention and will watch for a pattern. Pain at three."),
+        (dts(110,21,30), "Good day. He woke up rested. Mood was lighter than usual. Took his medication. Ate everything at every meal. Walked around the block on his own — said his back felt loose. First time doing that. A good sign."),
+        (dts(108,20,20), "Back pain worse today — he rated it a five, said it started overnight. Pain slowed him all morning. Took his medication. Ate okay. I called the VA nurse line and they said to monitor and note any changes. He was patient about it."),
+        (dts(107,20, 0), "PT appointment — first one I've attended with him. He did the exercises but said pain increased during. PT said some discomfort is expected early on. Mood was okay. Took his medication. Ate well at dinner. Pain down to a three by evening."),
+
+        # ── PHASE 2 — Days 106–99: Wave 1 — Sleep Disruption + Mood Decline ───
+        # Sleep concerning: days 105, 103, 102, 100, 99 (5 in 7-day window ending day 99)
+        # Mood concerning: days 104, 103, 102, 100, 99 (5 in 7-day window ending day 99)
+        # → Pattern alerts inserted at day 99
+        (dts(106,20,30), "Stable day. Good mood in the morning. Took his medication without prompting. Ate well at all three meals. Back pain at two — his real baseline. No nightmares mentioned. He called his brother and had a good long conversation."),
+        (dts(105,20,15), "He told me he woke up at 3 this morning and couldn't get back to sleep. Was tired and irritable through most of the morning. Took his medication after some reluctance. Ate lunch and dinner. Mood improved a little by evening but exhaustion was visible."),
+        (dts(104,21, 0), "He was irritable from the moment I arrived — short responses, sharp tone. No clear trigger. Took his medication eventually. Ate at meals. Snapped at me when I reminded him about PT exercises. I gave him space. By evening he settled. Said he hadn't slept well again."),
+        (dts(103,20,30), "He couldn't sleep again last night. Was withdrawn when I arrived and wouldn't engage in conversation for most of the morning. Took his medication. I'm starting to see a pattern — poor sleep leads directly to a withdrawn, low-mood day. Back pain also climbing, at a four."),
+        (dts(102,19,50), "Rough night — he woke up screaming, heard it when I arrived early. Was pale and shaking. Low mood all day, didn't want to talk. Refused his medication at breakfast, took it at noon. Ate dinner only. Nightmares are getting worse and the daytime impact is clear. Documenting carefully."),
+        (dts(101,20,30), "Exhausted and withdrawn from another poor night. Mood was very subdued but he was present. Took his medication on time, which was the one bright spot. Ate two meals. Back pain at a four. Didn't want to do PT exercises at home. Just wanted to rest."),
+        (dts(100,20, 0), "Barely slept last night. When I arrived he was sitting in the dark — said he'd been up since 3. Mood was depressed, hardly spoke. Refused his medication at first but took it an hour later. Ate a small lunch and dinner. Called the VA today and flagged the sleep and mood pattern. They'll follow up."),
+        (dts(99,20,45), "Was up most of the night again. Exhausted and irritable. Mood was low but he was more talkative than yesterday — said the nightmares are about his unit, specific moments he won't describe. Took his medication. The VA called back and is scheduling an appointment to address the sleep and nightmare pattern specifically."),
+
+        # ── PHASE 3 — Days 97–83: MH Crisis #1 + Recovery ─────────────────────
+        (dts(97,20, 0), "VA nurse confirmed a sleep review appointment in two weeks. He seemed relieved someone is listening. Slept better last night by his account. Mood calmer. Took his medication. Good appetite. Back pain at two. A bit of breathing room."),
+        (dts(95,20,30), "Tired but functional. Sleep was disrupted again but less severely. Mood flat, stayed in his room most of the morning. Took his medication. Ate at every meal. He asked about the VA appointment — he wants to talk about the nightmares. That's meaningful."),
+        (dts(93,21, 0), "Back pain flared today — rated it a six. Walked with difficulty. Took his medication. Ate light at lunch, better at dinner. Mood was subdued. I messaged the VA about the flare. The combination of pain and poor sleep is wearing on him. He said it himself."),
+        (dts(91,20,30), "Better day. Slept more than usual — almost seven hours. Mood was steadier. Took his medication. Good appetite. His brother called from Texas and they talked for a long time. He was more himself afterward. Back pain back to a two. Good day overall."),
+        (dts(90,20, 0), "VA appointment tomorrow for the sleep and nightmare review. He knows and seems prepared. Took his medication. Ate well. Mood was quiet but not concerning. He told me he wants the doctor to understand what the nightmares are actually like. I told him to say exactly that."),
+        (dts(88,21, 0), "Very difficult day. He woke from nightmares multiple times and by morning he was distraught. During breakfast he said he doesn't want to be here anymore — that nothing is ever going to change and he is tired of feeling this way. I stayed calm, stayed with him, did not leave. Called the VA crisis line immediately. They spoke with him for nearly forty minutes. He calmed down but was exhausted and fragile the rest of the day. I stayed until 9 PM. VA is scheduling an urgent mental health appointment for this week."),
+        (dts(87,20,30), "Day after the crisis. Subdued and cooperative. VA confirmed the mental health appointment for tomorrow. He agreed to go. Took his medication on his own. Ate okay. Checked in every hour. No crisis indicators. He thanked me for staying yesterday."),
+        (dts(86,20, 0), "VA mental health appointment today. Quiet going in and quiet coming out, but not distressed. Provider is adjusting his medication — adding support for the nightmares alongside his Prazosin. He said the appointment felt important. That's significant."),
+        (dts(85,20,45), "First day on adjusted medication. Groggy — provider said to expect that for a few days. Took his meds. Ate light. Slept during the afternoon. Mood flat but stable, no crisis indicators. Checked in every couple of hours."),
+        (dts(83,20, 0), "Medication adjustment settling. Less groggy today. Slept through the night for the first time in weeks — he mentioned it at breakfast without prompting. Mood cautiously better. Took his medication. Good appetite. Things are moving in the right direction."),
+
+        # ── PHASE 4 — Days 82–74: Wave 2 — Medication Refusal ─────────────────
+        # Medication refusal concerning: days 82, 80, 78, 77, 76 (5 in 7-day window)
+        # → Pattern alert inserted at day 76
+        (dts(82,21, 0), "He refused his medication this morning — said the new addition to his regimen makes him feel foggy and he doesn't want it. I explained the provider's rationale. He took his evening medications but not the morning dose. Flagging to the VA."),
+        (dts(81,20,30), "Mood was okay today. He took his medication at lunch after initially declining. Slept better than last week. Ate well. He called his daughter and they made plans for her to visit next month. Having something to look forward to is good."),
+        (dts(80,20, 0), "He refused his medication again at breakfast — said it makes him feel like someone else. Stayed firm but did not force it. He took the evening dose. Ate okay. Mood was mixed. Documenting the refusal and calling the VA tomorrow."),
+        (dts(78,21,15), "Refused his medication in the morning again. This is a consistent pattern now. He said the new medication makes him feel numb. Called the VA nurse — they said to document and they will review at next week's appointment. Took his other meds. Ate at meals. No crisis indicators."),
+        (dts(77,20,30), "Refused his medication at breakfast and at lunch. Took it at dinner only. He is frustrated with how the medication makes him feel — I hear him, and I am also worried about the refusals compounding. VA appointment in three days. Mood was low but not at crisis level."),
+        (dts(76,20, 0), "Refused his medication again this morning. Carefully documented every refusal this week. He took his evening dose. Mood was flat. Said he wants the VA to change what they gave him — he doesn't feel like it is helping the right things. I think he has a point."),
+        (dts(75,21, 0), "VA appointment today. He told the provider exactly what he told me — the medication makes him feel foggy and numb. Provider adjusted the dose downward. He seemed relieved to be heard. Mood lifted leaving the appointment. Took his medication at the new dose without resistance this evening."),
+        (dts(74,20,30), "Better day. Took his medication without any issue at the new dose. Said he already feels less foggy. Mood was calmer. Ate well. Slept okay. Back pain at a three — manageable. Talked about his daughter's upcoming visit. Things more settled today."),
+
+        # ── PHASE 5 — Days 73–62: Agitation Building + Violence Incident ───────
+        (dts(73,20, 0), "Mood elevated in an unusual way today — not the good kind. On edge, hypervigilant, checked the window several times. Took his medication. Ate okay. He mentioned a dream about being ambushed but wouldn't go further. Noted the agitation and heightened alertness."),
+        (dts(72,20,45), "Poor sleep again. He was pacing when I arrived. Refused his medication at breakfast — said he was too distracted. Took it at lunch. Mood was unsettled. A car backfired outside and he had a visible startle response — went straight to the window, didn't calm easily. Behavioral concerns today."),
+        (dts(70,21, 0), "Agitated and pacing most of the morning. Loud television bothered him — he turned it off and sat in silence. Took his medication. Ate lunch. A neighbor knocked and he tensed visibly, wouldn't open the door — I handled it. This level of hypervigilance is new. Flagging to the VA."),
+        (dts(68,20,15), "On edge all day. Seemed paranoid — kept saying someone was outside. I checked twice, no one was there. Took his medication after significant coaxing. Ate dinner. He had a flashback in the evening — grabbed the table edge, stared for thirty seconds, then came back. First one I have witnessed directly. Calling VA in the morning."),
+        (dts(66,20,30), "Called the VA this morning and described what I have been seeing — pacing, paranoia, flashback, hypervigilance. They said bring him in if anything escalates. He was calmer today. Took his medication. Ate at meals. Mood was low but not actively agitated. Staying alert."),
+        (dts(65,21, 0), "Serious incident today. A neighbor came to the door to complain about noise. Robert was already agitated from a flashback earlier in the afternoon. He got violent with a neighbor at the front door — grabbed him and shoved him hard into the doorframe before I could intervene. I separated them immediately. Robert came back inside visibly shaken. The neighbor was shaken but not seriously hurt and left. I called the VA crisis team right away. They arrived within the hour. Robert was calm by the time they got here. VA is contacting the neighbor and doing a formal safety review. I am documenting everything precisely."),
+        (dts(64,20, 0), "The day after the incident. Robert was subdued and remorseful — kept saying he didn't know why he did it. Ate okay. Took his medication. The VA safety team called to check in. Home visit scheduled for tomorrow. Documenting everything. He is not a danger right now but this changes the risk picture."),
+        (dts(62,20,30), "VA safety home visit completed. They spoke with Robert for about an hour. He was cooperative and honest. Safety plan updated — VA will increase check-in frequency and is expediting the trauma specialist referral. Robert seemed relieved that people are taking it seriously. Took his medication. Ate okay."),
+
+        # ── PHASE 6 — Days 61–51: Wave 3 — Physical Decline + Appetite ─────────
+        # Physical (via 'pain'): days 61, 59, 57, 55, 54 (5 in 7-day window ending day 54)
+        # Appetite concerning: days 59, 57, 55, 54 (4 in 7-day window)
+        # → Pattern alerts inserted at day 54
+        (dts(61,20, 0), "Quiet day after the safety review. Cooperative and subdued. Took his medication. Ate at every meal. No agitation or hypervigilance observed. I think the VA visit helped him feel contained. Still watching carefully. He thanked me for how I handled the door situation."),
+        (dts(60,20,30), "Back pain significantly worse — rated it a six. Said it woke him up around 4 AM. Pain affected his posture and movement all morning. Took his medication. Ate okay. Messaged the VA about the back pain flare. The stress from last week may be contributing."),
+        (dts(59,21, 0), "Pain continued at a five — said it now radiates down his left leg. Barely ate at breakfast, said he had no appetite. Small dinner. Took his medication. Didn't want to move much. Helped him with ice and a heating pad. VA nurse said to monitor whether the radiating pain continues."),
+        (dts(57,20,45), "Back pain still significant — rated it a six again. Uncomfortable changing positions. Skipped dinner, said the pain kills his appetite. Took his medication. Ate a small lunch. Concerned the radiating pattern suggests nerve involvement. VA PT in two days."),
+        (dts(55,20, 0), "Pain at a seven this morning. Barely got out of bed. Wouldn't eat, said he felt nauseous from the pain. Helped him sit up slowly. Took his medication. Called the VA urgently — they moved the PT appointment to tomorrow. He was frustrated but complied."),
+        (dts(54,20,30), "Emergency PT today. Therapist found significant muscle spasm and possible nerve irritation. Rest order for three days — no exercises, minimal movement. Back pain at a six leaving PT. Barely ate at lunch and dinner, said the pain suppresses everything. Mood low. Still taking his medication. A hard day."),
+        (dts(53,21, 0), "First rest day. Stayed in bed most of the morning. Pain easing to a five. Mood was low — being immobile is hard for him. Sat with him and we talked more than usual. Took his medication. Ate a small lunch. He talked about how being stuck in bed triggers memories of being helpless. Hard to hear."),
+        (dts(51,20,30), "Cleared for light movement. Pain down to a three. He was visibly relieved to be able to move again. Mood better. Took his medication. Good appetite. Asked about resuming PT next week. Trauma specialist appointment confirmed — three weeks out. He said he is ready."),
+
+        # ── PHASE 7 — Days 50–41: Wave 4 — Sleep + Mood 2nd Wave ──────────────
+        # Sleep concerning: days 50, 49, 48, 47, 45, 44 (6 in 7-day window ending day 44)
+        # Mood concerning: days 50, 49, 48, 47, 45, 44 (6 in 7-day window)
+        # → Pattern alerts inserted at day 42
+        (dts(50,20, 0), "Nightmares are back. He woke up screaming last night — heard it when I arrived early. Pale and shaking in the morning. Mood was very low, wouldn't make eye contact. Took his medication. Ate a small lunch. I am worried this is a new wave. Documenting carefully."),
+        (dts(49,21, 0), "He couldn't sleep last night — said every time he drifted off the nightmares pulled him back. Exhausted by morning. Mood was depressed, barely spoke. Took his medication. Ate at dinner. Called the VA to flag the nightmare recurrence. They said to monitor and come in if crisis signs emerge."),
+        (dts(48,20,30), "Barely slept two hours. Withdrawn when I arrived — sat in the living room staring at nothing. Mood was very low. Took his medication after prompting. Ate lunch. He said the nightmares feel more real than before, like being there again. Documenting every detail."),
+        (dts(47,20, 0), "Didn't sleep at all by his account. Sitting up in the chair when I arrived at 7. Mood low, depressed, flat affect. Took his medication. Ate a small dinner. Didn't want to talk and I didn't push. Just stayed present. Back pain creeping back — rated it a four."),
+        (dts(45,21,15), "Woke up at 3 AM by his account — called me at 6 saying he'd been up for hours. When I arrived he was agitated and tearful, which is unusual. Low mood all day. Took his medication. Ate lunch. Called the VA again. They moved the trauma specialist appointment up by a week. Still eight days away."),
+        (dts(44,20,30), "Was up most of the night. Exhausted, couldn't hold a conversation. Low mood persisted all day. Took his medication. Barely ate at lunch. By evening he was calmer from pure fatigue. Stayed until 8 PM. He fell asleep in the chair. Made sure he got to bed safely before I left."),
+        (dts(43,21, 0), "He woke up screaming again last night. Called me. I came early. Distressed and shaking. Mood was dark and frightened. Took his medication once calm. Ate a small dinner. He told me the nightmare involved his unit and something he has never described before — I let him talk as long as he wanted. He cried. I stayed."),
+        (dts(42,20, 0), "Barely slept. Depressed and exhausted when I arrived. Mood was the lowest I've seen since the first crisis weeks ago. Took his medication. Ate a small lunch. VA crisis line number is posted on his refrigerator. Gave him mine again and asked him to call any time. He said he would. He is holding on but barely."),
+
+        # ── PHASE 8 — Days 41–22: MH Crisis #2 + Recovery ─────────────────────
+        (dts(41,20,30), "He made it through the night without calling. Still very tired and low mood but slightly more present today. Took his medication. Ate at two meals. He talked about the trauma specialist appointment this week — said he doesn't know if he can hold on that long. I took that seriously and called the VA to ask about an earlier slot. They're looking."),
+        (dts(40,21, 0), "VA found an earlier slot for next week. He seemed relieved when I told him. Mood still low. Took his medication. Ate okay. Sleep was poor again but he stayed in bed. Checking in morning and evening by text. He is responding."),
+        (dts(38,20,30), "Mood collapsed today. Almost non-verbal by the time I arrived. No appetite — barely touched breakfast or lunch. Took his medication after significant coaxing. Sat by the window for hours, looking outside. Stayed all day. Called the VA and described his state. They told me to watch overnight and call the crisis line if anything escalates."),
+        (dts(36,21, 0), "Hard day. Mood extremely low. Refused to eat much at all. Took his medication. Barely spoke. We sat together in quiet for hours. He finally said he is tired of fighting this every day. I acknowledged how exhausting that must be and stayed close. No explicit crisis language but the despair is palpable."),
+        (dts(34,20, 0), "He is visibly struggling. Mood low throughout. Ate a small dinner only. Took his medication. The trauma specialist appointment is in four days — he knows and seems to be counting down. Told me it is the only thing he is looking forward to. Glad it exists."),
+        (dts(33,20,30), "Trauma specialist pre-appointment screening call today. She called and spoke with him for twenty minutes. He opened up more than I expected. After the call his mood was lighter for a few hours. Took his medication. Ate dinner. Sleep still poor but he got through the night."),
+        (dts(31,21, 0), "Quiet day. Subdued but compliant. Took his medication. Ate at every meal. Didn't speak much but wasn't distressed. I think he is conserving energy for the appointment in two days. He told me he has been thinking about what he wants to say. That takes strength."),
+        (dts(30,20, 0), "One day before the trauma specialist. Anxious in a functional way — anticipatory, not crisis. Mood was tense but present. Took his medication. Ate well. We talked through what he wants the specialist to know. He has a list in his head. I felt the gravity of tomorrow."),
+        (dts(28,21, 0), "Worst day since I started. He texted me at 5 AM and when I called he was crying and incoherent. I came immediately. He was on the floor by his bed. He said there was no reason to live. I stayed on the phone with the VA crisis line while physically present with him. The VA dispatched a mobile crisis team — they arrived within 45 minutes. He was evaluated and agreed to a voluntary same-day psychiatric evaluation at the VA medical center. I accompanied him. They adjusted his medication and put a safety plan in place. He came home late that night, exhausted but stable. The trauma specialist appointment is tomorrow — VA psychiatrist confirmed it is still on."),
+        (dts(27,20,30), "Trauma specialist appointment today — the day after the crisis. He went. I went with him. He spoke for nearly an hour. The specialist is a veteran herself, which mattered to him. She will see him weekly. His medication has been adjusted again. He came home quiet but not distressed. He told me in the car that he felt heard for the first time in a long time. That stayed with me."),
+        (dts(26,20, 0), "Day two post-crisis. Slept heavily — the medication adjustment helped. Mood flat but stable. Took his medication on time. Ate at breakfast and dinner. Safety plan is posted on his refrigerator. Crisis team checking in by phone daily this week. He answered the first call and was cooperative."),
+        (dts(25,20,30), "Third day after the crisis. Stabilizing. Mood still low but there is a floor to it now that wasn't there before. Took his medication. Ate all three meals. Slept about five hours. The trauma specialist called to check in. He spoke with her for twenty minutes. Calmer after. Progress."),
+        (dts(22,21, 0), "End of the first full week post-crisis. More stable. Taking his medication consistently. Sleep is better — nightmares still present but less severe. Mood has lifted from the floor, though still not good. He wanted to call his brother. We called together. Long conversation. Good for him."),
+
+        # ── PHASE 9 — Days 21–0: Stabilization & Progress ─────────────────────
+        (dts(21,20,30), "Calmer day. Mood was steady for most of the morning. Took his medication without prompting. Ate well. Sleep still disrupted but less severely. Back pain at a three — manageable. Told me the trauma specialist appointment yesterday was the best yet. They are starting EMDR work."),
+        (dts(19,20, 0), "Better sleep last night — only one nightmare instead of multiple, he said. Mood noticeably calmer. Took his medication. Good appetite at every meal. He went for a short walk without prompting. First time in weeks. His posture was different — more upright. Something is shifting."),
+        (dts(17,20,45), "His daughter called. He was animated and engaged — laughed twice during the call. That is significant. Mood was the best in over a month. Took his medication. Strong appetite. Sleep was okay. He told me his daughter is planning to visit next month. He has something to look forward to."),
+        (dts(15,21, 0), "Trauma specialist appointment — he went alone this time. Said he wanted to try. Came back quiet but purposeful. Said they are making progress. Medication seems to be working at the new dose — no foggy feeling, he said. Took his medication. Ate well. Sleep was decent. Cautiously optimistic."),
+        (dts(13,20,30), "Good day. Mood was steady and even pleasant at moments. He initiated conversation at breakfast without prompting. Took his medication. Strong appetite. Back pain at a two — his real baseline. He asked about the veteran group meeting schedule. Looking ahead is new."),
+        (dts(11,20, 0), "He walked to the corner store on his own and came back with something for dinner. That is independence I have not seen before. Mood was good. Took his medication. Ate well. Slept about six hours. No major complaints. The EMDR work seems to be doing something. He looks different — less haunted."),
+        (dts( 9,21,15), "Slept well — six and a half hours he said, the most in months. Mood was calm and warm. He made a joke at breakfast. Took his medication. Good appetite. No pain complaints. He mentioned noticing the medication feels different now — like it is working instead of fighting him. Important to document."),
+        (dts( 7,20,30), "His daughter is coming to visit this weekend. He has been looking forward to it for two weeks. Mood was animated today anticipating the visit. Took his medication. Ate well. Sleep was okay. He cleaned his room on his own — organized, military neat again. Care he is taking for himself."),
+        (dts( 5,20, 0), "His daughter arrived today. The change in him was immediate — bright, engaged, holding court. He showed her around, talked about his therapy progress. Took his medication without being reminded. Ate everything. Laughed several times. This is who he is when things are going right."),
+        (dts( 4,21, 0), "Second day of the visit. Still elevated — participating, smiling, storytelling. Took his medication. Strong appetite. He and his daughter went through old photographs. He talked about his service without shutting down. That is growth. I watched from across the room and felt the weight of the progress."),
+        (dts( 3,20,30), "Last day of the daughter's visit. Quieter by evening but held himself together during the goodbye. Took his medication. Ate well. The transition back to routine is always a watch period. Noted the emotional shift and will check in more frequently this week."),
+        (dts( 2,21, 0), "Post-visit adjustment. Mood was lower than yesterday but not at concerning levels — he knows his own pattern now and named it. Said he always feels a dip after she leaves and it passes. Took his medication. Ate okay. Slept through the night, which surprised me. His self-awareness is different from when we started."),
+        (dts( 1,20,30), "Good recovery from the post-visit dip. Mood was steady. He mentioned the trauma specialist appointment unprompted. Took his medication. Ate well. Back pain at a two. Asked me to look up the veteran peer group schedule — we found one nearby. He said he is thinking about going. That is forward motion."),
+        (dts( 0,20, 0), "Strong day. He woke at a reasonable hour, made his own coffee. Mood was calm and grounded — the most grounded I have seen him in four months. Took his medication on time without any prompting. Ate a full breakfast and dinner. Trauma specialist appointment is Thursday, veteran group meeting the Thursday after. He has structure and he is showing up to it. Progress is real and I am documenting it."),
+    ]
+
+    # ── TRANSLATION SESSIONS ────────────────────────────────────────────────────
+    translation_sessions = [
+        (dts(108,14,30), "[Translation Session — Robert, Spanish ↔ English]\n\nRobert: Good morning how did you sleep (Buenos días cómo dormiste)\nJimmy: I slept well thank you and you (Dormí bien gracias y tú)\nRobert: Not well I had pain in my back all night (No bien tuve dolor en la espalda toda la noche)\nJimmy: I am sorry I will let the nurse know about your pain (Lo siento le avisaré a la enfermera sobre tu dolor)\nRobert: Thank you I appreciate that (Gracias lo aprecio)\nJimmy: What else can I do for you today (¿Qué más puedo hacer por ti hoy?)\nRobert: Just stay close please (Solo quédate cerca por favor)"),
+        (dts(86,15, 0), "[Translation Session — Robert, Spanish ↔ English]\n\nRobert: I feel ashamed about what I said (Me da vergüenza lo que dije)\nJimmy: You do not need to feel ashamed you were in pain (No tienes que sentir vergüenza estabas sufriendo)\nRobert: I have felt this way before and I never said it out loud (He sentido esto antes y nunca lo dije en voz alta)\nJimmy: Saying it out loud was brave not weak (Decirlo fue valiente no débil)\nRobert: My family cannot know how bad it gets (Mi familia no puede saber qué tan mal se pone)\nJimmy: Your family knows you are strong they just need to know you also need help (Tu familia sabe que eres fuerte solo necesitan saber que tú también necesitas ayuda)\nRobert: Maybe you are right (Quizás tienes razón)"),
+        (dts(62,16,30), "[Translation Session — Robert, Spanish ↔ English]\n\nRobert: I did not mean to hurt him (No quise hacerle daño)\nJimmy: I know you did not the VA team knows that too (Lo sé tú no quisiste el equipo de la VA también lo sabe)\nRobert: Something took over I was not myself (Algo me tomó el control no era yo mismo)\nJimmy: That is exactly what you need to tell the trauma specialist (Eso es exactamente lo que necesitas decirle al especialista en trauma)\nRobert: Will they understand (¿Lo entenderán?)\nJimmy: Yes that is what they are trained for (Sí para eso están entrenados)\nRobert: Okay I will try (Bien lo intentaré)"),
+        (dts(33,15,45), "[Translation Session — Robert, Spanish ↔ English]\n\nRobert: I want to tell the specialist things I have never said in English (Quiero decirle al especialista cosas que nunca he dicho en inglés)\nJimmy: We can practice together if you want (Podemos practicar juntos si quieres)\nRobert: There are things that only make sense in Spanish (Hay cosas que solo tienen sentido en español)\nJimmy: Then say them in Spanish and I will help translate (Entonces dilo en español y yo ayudaré a traducir)\nRobert: I was nineteen and I made a decision I cannot change (Tenía diecinueve años y tomé una decisión que no puedo cambiar)\nJimmy: You were a kid trying to do what you were trained to do (Eras un niño tratando de hacer lo que te entrenaron para hacer)\nRobert: I know but it does not feel that way (Lo sé pero no se siente así)"),
+        (dts(11,14, 0), "[Translation Session — Robert, Spanish ↔ English]\n\nRobert: I slept well last night I want you to know that (Dormí bien anoche quiero que lo sepas)\nJimmy: That is great to hear what do you think is helping (Eso es genial qué crees que está ayudando)\nRobert: The therapy and the medication and you staying with me (La terapia y el medicamento y tú quedándote conmigo)\nJimmy: That means a lot to me (Eso significa mucho para mí)\nRobert: My daughter says you are the reason I am still here (Mi hija dice que tú eres la razón por la que todavía estoy aquí)\nJimmy: Your daughter is kind but you did the work (Tu hija es amable pero tú hiciste el trabajo)\nRobert: We both did (Los dos lo hicimos)"),
+    ]
+
+    # ── CAREGIVER WELLBEING CHECK-INS ──────────────────────────────────────────
+    wellbeing_entries = [
+        (dts(119,20,35), 3, "Still figuring out the routine. Robert is cooperative. Feeling cautiously okay."),
+        (dts(116,20,10), 3, None),
+        (dts(115,21, 5), 2, "VA appointment days are uncertain. He came back quiet. I stayed alert."),
+        (dts(113,20,25), 4, "Letter-writing was meaningful for both of us. Days like this remind me why I do this."),
+        (dts(111,20, 0), 3, None),
+        (dts(108,20,30), 2, "Back pain days are hard. I feel like I should be able to do more for it."),
+        (dts(107,20, 5), 3, "PT went okay. Good to see him doing something physical."),
+        (dts(105,20,10), 2, "The sleep disruption is visible now. Documenting everything carefully."),
+        (dts(104,21, 5), 2, "His irritability on these days is hard to absorb without taking it personally. I know it's not about me."),
+        (dts(103,20,30), 1, "Worst sleep nights produce worst days. I'm exhausted from the vigilance too."),
+        (dts(102,21, 0), 1, "He woke up screaming. I came early. Still shaking on the drive over. Hardest morning so far."),
+        (dts(100,20,10), 2, "These low days are heavy. Called the VA. Glad I documented. The pattern is real."),
+        (dts(99,21, 5), 3, "VA is following up on the sleep pattern. Having a plan helps me too."),
+        (dts(97,20,10), 3, "VA nurse confirmed the appointment. That helps."),
+        (dts(93,20,30), 2, "Back pain on top of everything else. Long day."),
+        (dts(91,21, 5), 4, "His brother's call lifted him. I felt it too."),
+        (dts(88,21,30), 1, "Hardest day since I started. He said he doesn't want to be here. My hands were shaking the whole time I stayed. Called the VA crisis line from his kitchen. Did not leave until 9 PM. Could not eat dinner when I got home."),
+        (dts(87,20,15), 2, "Still processing yesterday. He is stable. I am not fully okay but I am here."),
+        (dts(86,20,30), 3, "VA appointment helped. The medication change is a step. More grounded today."),
+        (dts(83,21, 0), 4, "He slept through the night. Found out in the morning. I actually cried in the car. Relief."),
+        (dts(82,20,10), 2, "Medication refusals are draining. I don't want to be the enforcer. That's not the relationship I want with him."),
+        (dts(80,20,30), 2, "Another refusal. Documented. Called VA. Felt powerless again."),
+        (dts(75,20, 5), 4, "VA heard him today. The dose adjustment felt like a turning point. He left looking lighter."),
+        (dts(73,20,30), 2, "Something is off with him this week. Can't name it but I'm watching carefully."),
+        (dts(70,21, 0), 2, "The hypervigilance is hard to be around. I feel it in my own body."),
+        (dts(68,20,15), 1, "The flashback I witnessed today was frightening. Held it together for him. Fell apart a bit on the drive home."),
+        (dts(65,21,30), 1, "The incident. I have never intervened physically in a caregiving situation before. I replayed it all evening. He is safe. The neighbor is okay. I am shaken."),
+        (dts(64,20,20), 2, "Still processing the incident. He was remorseful. I was professional. Feels important to keep showing up."),
+        (dts(62,20,30), 3, "VA safety visit helped clarify things. I feel like there's a team around him now. And me."),
+        (dts(60,20,10), 2, "Back pain crisis on top of everything. Never rains. Documenting everything."),
+        (dts(57,20,30), 2, "The combination of pain and low appetite is concerning. I feel like I should have a medical degree."),
+        (dts(54,20,10), 1, "Emergency PT. Rest order. He is suffering physically and I feel helpless. Today was a lot."),
+        (dts(51,21, 0), 3, "He can move again. Relief. He seems relieved too."),
+        (dts(49,20,30), 2, "Nightmares back. I had hoped we were past this. Documenting for the VA."),
+        (dts(45,21,15), 1, "Called the VA again. Calling every other day now. The appointment being moved up is the only good news."),
+        (dts(43,21,30), 1, "He cried. I have never seen him cry before. I stayed. Did not know what else to do. Stayed."),
+        (dts(42,20,15), 2, "He is holding on. So am I. Documenting everything."),
+        (dts(38,20,30), 1, "His mood collapsed. I stayed all day. Did not eat lunch. Didn't think about it until the drive home."),
+        (dts(36,21, 0), 2, "He said he is tired of fighting. I did not know what to say. I just stayed. Sometimes that is the whole job."),
+        (dts(28,21,45), 1, "Second crisis. Four months in and this is the second time I have been here for this. I am proud of how I handled it and also exhausted to my bones. He is safe. That is what matters."),
+        (dts(27,20,30), 3, "The trauma specialist. She is the right person. I could see it on his face. Something shifted today."),
+        (dts(25,20,10), 3, "Third day post-crisis. He is stabilizing. So am I. I called the caregiver support line for myself today. That was important."),
+        (dts(22,21, 0), 4, "One week post-crisis. More stable than I have felt in a long time. The team is good. He is trying."),
+        (dts(17,20,45), 4, "His daughter called. He laughed. I cried in the car again. Happy tears this time."),
+        (dts(11,21, 0), 5, "He went to the store alone. I watched from here. He came back. That was everything."),
+        (dts( 5,20,30), 5, "Daughter's visit. Best day since I started. Maybe best day ever in this work."),
+        (dts( 3,20,10), 3, "Last day of the visit. Watching the transition. He named it himself. That is growth."),
+        (dts( 1,20,35), 4, "He mentioned the trauma appointment unprompted. Progress is real."),
+        (dts( 0,20,10), 5, "Strong end to the week. He has a schedule. He is showing up. So am I."),
     ]
 
     conn = get_db()
-    inserted = 0
+
+    # Wipe existing seeded data for a clean 120-day slate
+    conn.execute("DELETE FROM deletion_audit")
+    conn.execute("DELETE FROM alerts")
+    conn.execute("DELETE FROM entries")
+    conn.execute("DELETE FROM caregiver_wellbeing")
+    conn.execute("DELETE FROM medications")
+    conn.commit()
+
+    inserted_entries  = 0
+    inserted_wellbeing = 0
+
+    # Insert observation entries — emergency alerts auto-created from extraction
+    entry_ids_by_date = {}  # date string → list of entry IDs (for pattern alert linking)
     for created_at, note in sample_notes:
-        already = conn.execute(
-            "SELECT id FROM entries WHERE raw_note = ?", (note,)
-        ).fetchone()
-        if already:
-            continue
         extraction = extract_note(note)
         cur = conn.execute(
-            "INSERT INTO entries (created_at, raw_note, extracted_tags, is_emergency_flagged, emergency_phrase) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO entries (created_at, raw_note, extracted_tags, is_emergency_flagged, emergency_phrase, note_type) VALUES (?, ?, ?, ?, ?, 'observation')",
             (created_at, note, json.dumps(extraction["tags"]),
              1 if extraction["emergency"] else 0,
              extraction.get("emergency_phrase"))
         )
         entry_id = cur.lastrowid
+        day_key  = created_at[:10]
+        entry_ids_by_date.setdefault(day_key, []).append(entry_id)
         if extraction["emergency"]:
             etype = extraction.get("emergency_type") or "emergency"
             conn.execute(
                 "INSERT INTO alerts (created_at, entry_id, alert_type, alert_message) VALUES (?, ?, ?, ?)",
-                (created_at, entry_id, etype, f"Emergency language detected: \"{extraction['emergency_phrase']}\"")
+                (created_at, entry_id, etype,
+                 f"Emergency language detected: \"{extraction['emergency_phrase']}\"")
             )
-        inserted += 1
+        inserted_entries += 1
 
-    conn.commit()  # must commit before detect_patterns opens its own connection
+    # Insert translation sessions
+    for created_at, note in translation_sessions:
+        extraction = extract_note(note)
+        conn.execute(
+            "INSERT INTO entries (created_at, raw_note, extracted_tags, is_emergency_flagged, emergency_phrase, note_type) VALUES (?, ?, ?, 0, NULL, 'translation')",
+            (created_at, note, json.dumps(extraction["tags"]))
+        )
+        inserted_entries += 1
 
-    # Add pattern alerts for the seed data
-    patterns = detect_patterns()
-    for p in patterns:
-        exists = conn.execute(
-            "SELECT id FROM alerts WHERE alert_type='pattern' AND alert_message LIKE ?",
-            (f"%{p['category']}%",)
-        ).fetchone()
-        if not exists:
-            conn.execute(
-                "INSERT INTO alerts (alert_type, alert_message) VALUES ('pattern', ?)",
-                (p["message"],)
-            )
+    # Insert caregiver wellbeing check-ins
+    for created_at, rating, notes in wellbeing_entries:
+        conn.execute(
+            "INSERT INTO caregiver_wellbeing (created_at, rating, notes) VALUES (?, ?, ?)",
+            (created_at, rating, notes)
+        )
+        inserted_wellbeing += 1
+
+    # Seed medications
+    meds = [
+        ("Sertraline",  "100mg", "Once daily", "Morning", "Prescribed for depression and PTSD symptoms"),
+        ("Prazosin",    "2mg",   "Once daily", "Bedtime",  "For nightmare reduction — VA prescribed"),
+        ("Ibuprofen",   "400mg", "As needed",  None,       "For back pain — use sparingly"),
+        ("Lisinopril",  "10mg",  "Once daily", "Morning",  "Blood pressure management"),
+    ]
+    for name, dosage, frequency, scheduled_time, note_text in meds:
+        conn.execute(
+            "INSERT INTO medications (name, dosage, frequency, scheduled_time, notes) VALUES (?,?,?,?,?)",
+            (name, dosage, frequency, scheduled_time, note_text)
+        )
+
+    conn.commit()
+
+    # ── Insert historical pattern alerts at the correct dates ──────────────────
+    # Each alert is linked to an entry from that date so the calendar's has_pattern
+    # flag fires correctly: DATE(a.created_at) = DATE(e.created_at).
+    label_map = {
+        "sleep":      "Sleep disruption",
+        "mood":       "Mood concerns",
+        "medication": "Medication refusal",
+        "physical":   "Physical symptoms",
+        "appetite":   "Appetite issues",
+    }
+
+    def add_pattern_alert(days_ago, category, count, window=7):
+        created = dts(days_ago, 21, 0)
+        day_key = created[:10]
+        ids     = entry_ids_by_date.get(day_key, [])
+        eid     = ids[-1] if ids else None
+        label   = label_map.get(category, category.title())
+        msg     = f"{label} flagged {count} times in the last {window} days."
+        conn.execute(
+            "INSERT INTO alerts (created_at, entry_id, alert_type, alert_message) VALUES (?, ?, 'pattern', ?)",
+            (created, eid, msg)
+        )
+
+    # Wave 1 (days 105–99): sleep disruption 5x, mood concerns 5x
+    add_pattern_alert(99, "sleep", 5)
+    add_pattern_alert(99, "mood",  5)
+    # Wave 2 (days 82–76): medication refusal 5x
+    add_pattern_alert(76, "medication", 5)
+    # Wave 3 (days 61–54): physical symptoms 5x, appetite issues 4x
+    add_pattern_alert(54, "physical",  5)
+    add_pattern_alert(54, "appetite",  4)
+    # Wave 4 (days 50–42): sleep disruption 6x, mood concerns 6x
+    add_pattern_alert(42, "sleep", 6)
+    add_pattern_alert(42, "mood",  6)
 
     conn.commit()
     conn.close()
-    return jsonify({"inserted": inserted, "message": f"Loaded {inserted} sample entries."})
+
+    return jsonify({
+        "inserted":  inserted_entries,
+        "wellbeing": inserted_wellbeing,
+        "message":   f"Loaded {inserted_entries} entries and {inserted_wellbeing} caregiver check-ins across 120 days."
+    })
+
+# ── Voice ID ───────────────────────────────────────────────────────────────────
+
+@app.route("/api/voice/status", methods=["GET"])
+def voice_status():
+    conn = get_db()
+    row = conn.execute("SELECT id FROM voice_profiles ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    return jsonify({"enrolled": row is not None})
+
+@app.route("/api/voice/enroll", methods=["POST"])
+def voice_enroll():
+    data = request.get_json()
+    conn = get_db()
+    cg = conn.execute("SELECT caregiver_id FROM caregivers ORDER BY id DESC LIMIT 1").fetchone()
+    caregiver_id = cg["caregiver_id"] if cg else "unknown"
+    conn.execute("DELETE FROM voice_profiles WHERE caregiver_id = ?", (caregiver_id,))
+    conn.execute("""
+        INSERT INTO voice_profiles (caregiver_id, phrase_text, pitch_mean, pitch_std,
+                                    energy_mean, spectral_centroid, freq_profile)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        caregiver_id,
+        data.get("phrase", ""),
+        data.get("pitch_mean", 0),
+        data.get("pitch_std", 0),
+        data.get("energy_mean", 0),
+        data.get("spectral_centroid", 0),
+        json.dumps(data.get("freq_profile", []))
+    ))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/voice/verify", methods=["POST"])
+def voice_verify():
+    data = request.get_json()
+    conn = get_db()
+    row = conn.execute("SELECT * FROM voice_profiles ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"verified": False, "confidence": 0, "reason": "not_enrolled"})
+
+    stored = json.loads(row["freq_profile"] or "[]")
+    incoming = data.get("freq_profile", [])
+
+    if not stored or not incoming or len(stored) != len(incoming):
+        return jsonify({"verified": False, "confidence": 0, "reason": "profile_mismatch"})
+
+    # Cosine similarity on frequency profile
+    dot = sum(a * b for a, b in zip(stored, incoming))
+    norm_a = sum(a * a for a in stored) ** 0.5
+    norm_b = sum(b * b for b in incoming) ** 0.5
+    similarity = dot / (norm_a * norm_b) if norm_a and norm_b else 0
+
+    # Pitch range check
+    pitch_ok = True
+    if row["pitch_mean"] and row["pitch_std"]:
+        incoming_pitch = data.get("pitch_mean", 0)
+        pitch_ok = abs(incoming_pitch - row["pitch_mean"]) <= (row["pitch_std"] * 2.5 + 30)
+
+    verified = similarity > 0.72 and pitch_ok
+    return jsonify({
+        "verified": verified,
+        "confidence": round(similarity, 3),
+        "pitch_match": pitch_ok
+    })
+
+@app.route("/api/voice/profile", methods=["GET"])
+def voice_profile():
+    conn = get_db()
+    row = conn.execute("SELECT pitch_mean, pitch_std, spectral_centroid FROM voice_profiles ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"enrolled": False})
+    return jsonify({
+        "enrolled": True,
+        "pitch_mean": row["pitch_mean"],
+        "pitch_std": row["pitch_std"],
+        "spectral_centroid": row["spectral_centroid"]
+    })
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     init_db()
     migrate_db()
+    port = int(os.environ.get("PORT", 5050))
+    mode = "SANDBOX (keyword rules)" if SANDBOX_MODE else "LIVE (Claude Haiku)"
     print()
-    print("  CareLog — Caregiver AI Sandbox")
+    print("  CareLog — Caregiver AI")
     print("  --------------------------------")
-    print("  Running at:  http://localhost:5050")
-    print("  Mode:        SANDBOX (AI calls simulated, no API key needed)")
-    print("  Database:    caregiver.db (local SQLite)")
+    print(f"  Running at:  http://localhost:{port}")
+    print(f"  Mode:        {mode}")
+    print(f"  Database:    {DB_PATH}")
     print()
-    app.run(debug=True, port=5050)
+    app.run(debug=False, host="0.0.0.0", port=port)

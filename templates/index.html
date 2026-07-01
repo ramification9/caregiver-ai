@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1B4F72">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CareLog">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 <title>CareLog — Caregiver Observation Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&display=swap" rel="stylesheet">
 <style>
 :root {
   --navy:    #1B4F72;
@@ -28,11 +35,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.6; }
 
-.sandbox-bar { background: #7D6608; color: #FEF9E7; text-align: center; padding: 8px 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
-
-header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-header h1 span { font-weight: 300; opacity: 0.8; font-size: 16px; }
+header { background: var(--navy); color: white; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+#affirmation-strip { background: var(--navy); overflow: hidden; white-space: nowrap; position: relative; padding: 8px 24px; }
+#affirmation-strip span { display: inline-block; font-family: 'Great Vibes', cursive; font-size: 24px; font-weight: 400; color: #F9D56E; text-shadow: 0 1px 6px rgba(0,0,0,0.2); animation: marquee-slide 60s linear infinite; white-space: nowrap; }
+@keyframes marquee-slide { 0% { transform: translateX(110vw); } 100% { transform: translateX(-110vw); } }
+@keyframes marquee-first { 0% { transform: translateX(35vw); } 100% { transform: translateX(-110vw); } }
+.header-brand { display:flex; align-items:center; gap:12px; }
+.header-logo { width:36px; height:36px; background:rgba(255,255,255,0.12); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.header-name { font-size:20px; font-weight:800; letter-spacing:0.3px; line-height:1.2; }
+.header-tagline { font-size:11px; opacity:0.55; font-weight:400; letter-spacing:0.5px; margin-top:2px; }
+footer { background: white; border-top: 1px solid var(--border); margin-top: 16px; }
+.footer-inner { max-width: 780px; margin: 0 auto; padding: 20px 16px; text-align: center; }
+.footer-trust { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.footer-disclaimer { font-size: 12px; color: var(--muted); line-height: 1.7; }
 #alert-badge { background: var(--red); color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; font-weight: 700; display: none; }
 
 nav { background: white; border-bottom: 2px solid var(--border); display: flex; padding: 0 16px; overflow-x: auto; }
@@ -45,14 +60,35 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .section { display: none; }
 .section.active { display: block; }
 
-#checkin-box { background: var(--card); border-left: 4px solid var(--blue); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px; box-shadow: var(--shadow); }
-#checkin-box p { color: var(--blue); font-size: 15px; font-weight: 500; }
+#checkin-box { padding: 16px 0 4px; margin-bottom: 32px; }
+#checkin-box p { color: var(--text); font-size: 16px; font-weight: 500; line-height: 1.6; }
 #checkin-box .context-tag { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.input-glass { background: rgba(255,255,255,0.58); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 22px 20px; margin-bottom: 16px; }
+.inner-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(0,0,0,0.09), transparent); margin: 18px 0; display: none; }
+.section-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(0,0,0,0.10), transparent); margin: 24px 0; }
+.section-h { color: var(--navy); font-size: 18px; margin-bottom: 6px; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.muted-note { font-size: 13px; color: var(--muted); }
+
+/* Voice command banner */
+.vc-banner { margin-top: 12px; background: var(--navy); border-radius: 10px; padding: 10px 14px; }
+.vc-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+.vc-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.vc-pill { background: rgba(255,255,255,0.1); color: white; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+.vc-sep { color: rgba(255,255,255,0.4); font-size: 12px; align-self: center; }
+
+/* Checkin section */
+.checkin-how { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 14px; }
+.checkin-optional { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+
+/* Summary flag badge */
+.flag-badge { color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
 
 .card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
 .card h2 { font-size: 17px; color: var(--navy); margin-bottom: 16px; }
 
-#note-input { width: 100%; min-height: 140px; padding: 14px; font-size: 16px; border: 2px solid var(--border); border-radius: var(--radius); resize: vertical; font-family: inherit; line-height: 1.7; transition: border-color 0.2s; }
+#note-input { width: 100%; min-height: 140px; padding: 14px; font-size: 16px; border: 1px solid rgba(0,0,0,0.07); border-radius: var(--radius); resize: vertical; font-family: inherit; line-height: 1.7; transition: border-color 0.2s; background: transparent; }
 #note-input:focus { outline: none; border-color: var(--blue); }
 #note-input::placeholder { color: #AAB7C4; }
 .input-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
@@ -68,6 +104,8 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .btn-danger { background: var(--red); color: white; }
 .btn-sm { padding: 6px 14px; font-size: 13px; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+@keyframes banner-fade { 0% { opacity:1; } 80% { opacity:1; } 100% { opacity:0; } }
+#voice-command-banner.fading { animation: banner-fade 4s forwards; }
 
 #extraction-result { display: none; }
 .result-note { padding: 12px 16px; border-radius: var(--radius); font-weight: 500; margin-bottom: 16px; }
@@ -85,6 +123,11 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .tag-correct-btn:hover { opacity: 1; }
 .sandbox-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
 
+.affirmation-card { background: #FDFAF4; border: 1px solid #E8DFC8; border-left: 4px solid #B7860D; border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; }
+.affirmation-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #B7860D; margin-bottom: 10px; }
+.affirmation-headline { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; line-height: 1.4; }
+.affirmation-body { font-size: 14px; color: var(--muted); line-height: 1.7; margin-top: 6px; }
+
 .followup-box { background: var(--noted-bg); border-left: 3px solid var(--blue); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0; }
 .followup-box .followup-label { font-size: 12px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
 .followup-box p { font-size: 15px; color: var(--text); }
@@ -101,11 +144,107 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .suggestion-chip .chip-dismiss { background: none; border: none; cursor: pointer; color: #6C3483; opacity: 0.5; font-size: 13px; padding: 0; line-height: 1; }
 .suggestion-chip .chip-dismiss:hover { opacity: 1; }
 
+/* ── Calendar ─────────────────────────────────────────────────────────────── */
+.cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.cal-month-title { font-size:20px; font-weight:800; color:var(--navy); line-height:1.2; }
+.cal-legend { display:flex; align-items:center; gap:10px; margin-top:5px; justify-content:center; font-size:11px; color:var(--muted); font-weight:600; }
+.cal-bar-swatch { display:inline-block; width:6px; height:16px; border-radius:3px; margin-right:4px; vertical-align:middle; }
+.cal-bar-swatch.obs { background:var(--navy); }
+.cal-bar-swatch.emergency { background:var(--red); }
+.cal-bar-swatch.pattern { background:var(--amber); }
+.cal-bar-swatch.translation { background:#0077b6; }
+.cal-nav-group { display:flex; gap:6px; }
+.cal-nav-btn { background:white; border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:16px; cursor:pointer; color:var(--navy); font-weight:700; box-shadow:var(--shadow); line-height:1; }
+.cal-nav-btn:hover:not(:disabled) { background:var(--navy); color:white; }
+.cal-nav-btn:disabled { opacity:0.25; cursor:default; }
+.cal-jump-row { display:flex; justify-content:space-between; margin-bottom:10px; gap:8px; }
+.cal-jump-btn { flex:1; background:none; border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; color:var(--navy); cursor:pointer; }
+.cal-jump-btn:hover { background:var(--navy); color:white; border-color:var(--navy); }
+.cal-dow-row-main { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; }
+.cal-dow-row-main span { text-align:center; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; padding:4px 0; }
+/* Day 1 — Start of Care tile */
+.cal-tile.start-of-care { outline:2px solid var(--navy); outline-offset:-2px; }
+.cal-start-badge { position:absolute; top:3px; left:3px; font-size:7px; font-weight:800; text-transform:uppercase; color:var(--navy); letter-spacing:0.3px; line-height:1; }
+.cal-tile.alert-emergency .cal-start-badge,
+.cal-tile.alert-pattern .cal-start-badge,
+.cal-tile.selected .cal-start-badge { color:rgba(255,255,255,0.8); }
+.cal-month-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+@media(max-width:480px){ .cal-month-grid { gap:3px; } }
+.cal-tile { position:relative; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; font-size:16px; font-weight:600; color:var(--text); transition:background 0.15s; }
+.cal-tile.in-month { background:white; box-shadow:var(--shadow); cursor:default; }
+.cal-tile.in-month.has-entry { cursor:pointer; }
+.cal-tile.in-month.has-entry:hover:not(.selected) { background:rgba(10,36,99,0.09); }
+.cal-tile.other-month { background:#f0f2f5; color:#ccc; }
+.cal-tile.is-today { outline:2px solid var(--amber); outline-offset:-1px; font-weight:800; }
+.cal-tile.selected { background:var(--navy) !important; color:white !important; }
+/* Primary alert fills the tile */
+.cal-tile.alert-emergency { background:var(--red) !important; }
+.cal-tile.alert-emergency .cal-day-num { color:white; font-weight:800; }
+.cal-tile.alert-pattern { background:var(--amber) !important; }
+.cal-tile.alert-pattern .cal-day-num { color:white; font-weight:800; }
+/* Selected always wins */
+.cal-tile.selected { background:var(--navy) !important; }
+.cal-tile.selected .cal-day-num { color:white !important; }
+.cal-tile.selected .cal-vbar { background:rgba(255,255,255,0.45) !important; }
+/* Vertical secondary bars — right side */
+.cal-vbars { position:absolute; right:5px; top:10%; bottom:10%; display:flex; gap:3px; align-items:stretch; }
+.cal-vbar { width:6px; border-radius:3px; min-height:100%; }
+.cal-vbar.obs { background:var(--navy); }
+.cal-vbar.emergency { background:var(--red); }
+.cal-vbar.pattern { background:var(--amber); }
+.cal-vbar.translation { background:#0077b6; }
+.cal-selection-bar { display:flex; align-items:center; justify-content:space-between; background:var(--navy); color:white; border-radius:var(--radius); padding:10px 16px; margin-top:14px; font-size:13px; font-weight:600; }
+.cal-selection-clear { background:rgba(255,255,255,0.18); border:none; color:white; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer; font-weight:700; }
+/* Month Summary */
+.cal-month-summary { margin-top:14px; }
+.cms-header { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.cms-stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.cms-stat { background:white; border-radius:10px; box-shadow:var(--shadow); padding:10px 14px; display:flex; flex-direction:column; align-items:center; min-width:70px; flex:1; }
+.cms-stat.muted { opacity:0.55; }
+.cms-stat.clickable { cursor:pointer; border:2px solid transparent; transition:border-color 0.15s, box-shadow 0.15s; }
+.cms-stat.clickable:hover { box-shadow:0 3px 14px rgba(0,0,0,0.15); border-color:var(--gold); }
+.cms-stat-val { font-size:22px; font-weight:800; color:var(--navy); line-height:1; }
+.cms-stat-val.red { color:var(--red); }
+.cms-stat-val.amber { color:var(--amber); }
+.cms-stat-val.blue { color:#0077b6; }
+.cms-stat-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); margin-top:4px; text-align:center; }
+.cms-events { display:flex; flex-direction:column; gap:6px; }
+.cms-alerts-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin:14px 0 8px; }
+.cms-event { display:flex; flex-direction:column; gap:6px; background:white; border-radius:8px; box-shadow:var(--shadow); padding:10px 14px; cursor:pointer; border-left:4px solid var(--border); }
+.cms-event:hover { box-shadow:0 3px 12px rgba(0,0,0,0.12); }
+.cms-event.emergency { border-left-color:var(--red); }
+.cms-event.pattern { border-left-color:var(--amber); }
+.cms-event.translation { border-left-color:#0077b6; }
+.cms-event.observation { border-left-color:var(--navy); }
+.cms-event-badge-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.cms-event-date { font-size:11px; font-weight:700; color:var(--muted); }
+.cms-event-desc { font-size:13px; color:var(--text); line-height:1.4; }
+.cal-panel-section-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin:18px 0 10px; padding-top:14px; border-top:2px solid var(--border); }
+.cms-empty { text-align:center; color:var(--muted); font-size:13px; padding:20px; background:white; border-radius:var(--radius); box-shadow:var(--shadow); }
+.cms-caredays { font-size:12px; color:var(--muted); text-align:center; margin-top:10px; font-style:italic; }
+
+.cal-panel { margin-top:12px; }
+.cal-panel-date-hdr { font-size:13px; font-weight:800; color:var(--navy); padding:10px 0 7px; border-bottom:2px solid var(--navy); margin-bottom:10px; margin-top:20px; text-transform:uppercase; letter-spacing:0.4px; }
+.cal-panel-date-hdr:first-child { margin-top:4px; }
+.cal-empty-msg { text-align:center; color:var(--muted); font-size:13px; padding:24px; }
+
 .entry-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); border-left: 4px solid var(--border); cursor: pointer; transition: box-shadow 0.2s; }
 .entry-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 .entry-card.emergency { border-left-color: var(--red); }
 .entry-card.has-concern { border-left-color: var(--amber); }
 .entry-card.all-positive { border-left-color: var(--green); }
+.entry-card.translation-session { border-left-color: #0077b6; }
+.entry-translate-badge { font-size:11px; font-weight:700; color:#0077b6; }
+.history-date-hdr { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); padding:18px 0 8px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.history-date-hdr:first-child { padding-top:0; }
+/* Translation transcript in history */
+.tc-history-label { font-size:13px; font-weight:600; color:#0077b6; cursor:pointer; padding:2px 0; }
+.tc-history-label:hover { text-decoration:underline; }
+.tc-history-transcript { margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+.tc-hist-line { display:flex; flex-direction:column; gap:2px; }
+.tc-hist-speaker { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); }
+.tc-hist-translated { font-size:14px; color:var(--text); line-height:1.5; }
+.tc-hist-original { font-size:12px; color:var(--muted); font-style:italic; }
 .entry-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; gap: 12px; align-items: center; }
 .entry-meta .emerg-flag { background: var(--red); color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
 .entry-preview { font-size: 14px; color: var(--text); margin-bottom: 10px; }
@@ -120,6 +259,34 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .pattern-body p { font-size: 14px; color: var(--text); }
 .pattern-count { font-size: 32px; font-weight: 800; color: var(--amber); flex-shrink: 0; margin-left: auto; }
 .no-patterns { background: var(--positive-bg); border-radius: var(--radius); padding: 20px; text-align: center; color: var(--positive-text); font-weight: 600; }
+.profile-hero { background: var(--navy); color: white; border-radius: var(--radius); padding: 24px 22px 20px; margin-bottom: 16px; }
+.profile-name { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.profile-veteran-badge { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; padding: 3px 8px; color: white; }
+.profile-meta { font-size: 13px; opacity: 0.8; line-height: 1.9; }
+.profile-meta strong { opacity: 1; font-weight: 700; color: white; }
+.profile-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.profile-stat { background: var(--card); border-radius: var(--radius); padding: 14px 10px; text-align: center; box-shadow: var(--shadow); }
+.profile-stat-val { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; }
+.profile-stat-val.red { color: var(--red); }
+.profile-stat-val.amber { color: var(--amber); }
+.profile-stat-val.blue { color: var(--blue); }
+.profile-stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-top: 4px; }
+.profile-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.profile-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 12px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+.profile-med-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.profile-med-row:last-child { border-bottom: none; }
+.profile-med-name { font-size: 14px; font-weight: 700; color: var(--navy); min-width: 120px; }
+.profile-med-detail { font-size: 13px; color: var(--text); }
+.profile-med-note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.profile-conditions-area { width: 100%; min-height: 90px; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; resize: vertical; font-family: inherit; line-height: 1.6; }
+.profile-conditions-area:focus { outline: none; border-color: var(--navy); }
+.profile-crisis-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.profile-crisis-row:last-child { border-bottom: none; }
+.profile-crisis-label { color: var(--muted); font-size: 12px; font-weight: 600; min-width: 110px; }
+.profile-crisis-num { font-weight: 700; color: var(--navy); }
+.wb-dots { margin-top: 8px; }
+.wb-entry-date { font-size: 13px; color: var(--muted); font-weight: 600; }
+.wb-entry-note { margin-top: 4px; }
 .ptn-section-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-radius:var(--radius); cursor:pointer; user-select:none; margin-bottom:4px; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:white; box-shadow:var(--shadow); transition:opacity 0.15s, box-shadow 0.15s; }
 .ptn-section-head:hover { opacity:0.92; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
 .ptn-section-head .ptn-arrow { font-size:11px; background:rgba(255,255,255,0.25); border-radius:4px; padding:3px 10px; letter-spacing:0; font-weight:400; white-space:nowrap; }
@@ -206,6 +373,9 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .sum-followup-item { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; line-height:1.6; }
 .sum-followup-item:last-child { border-bottom:none; }
 .sum-followup-bullet { color:var(--navy); font-size:18px; flex-shrink:0; line-height:1.4; }
+.sum-visit-badge { background:var(--navy); color:white; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px; letter-spacing:0.4px; }
+.sum-followup-desc { font-size:13px; color:var(--muted); margin:-4px 0 12px; }
+.sum-cg-line { font-size:12px; color:var(--muted); margin-top:4px; font-family:monospace; }
 
 /* Medications */
 .med-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px; box-shadow: var(--shadow); border-left: 4px solid var(--blue); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
@@ -335,12 +505,37 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 .spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Translate */
+.tc-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
+.tc-header-left h2 { font-size:18px; font-weight:700; color:var(--navy); margin-bottom:2px; }
+.tc-header-left p  { font-size:13px; color:var(--muted); }
+.tc-clear-btn { background:transparent; border:1px solid var(--border); border-radius:8px; padding:6px 14px; font-size:12px; color:var(--muted); cursor:pointer; white-space:nowrap; }
+.tc-clear-btn:hover { border-color:var(--navy); color:var(--navy); }
+.tc-window { min-height:240px; max-height:400px; overflow-y:auto; background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:14px; }
+.tc-empty-msg { color:var(--muted); font-size:13px; text-align:center; margin:auto; }
+.tc-msg { display:flex; flex-direction:column; gap:3px; }
+.tc-msg.patient { align-items:flex-start; }
+.tc-msg.caregiver { align-items:flex-end; }
+.tc-msg-name { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); }
+.tc-bubble { max-width:82%; padding:10px 16px; border-radius:18px; font-size:15px; line-height:1.5; color:white; }
+.tc-msg.patient .tc-bubble { background:var(--navy); border-bottom-left-radius:4px; }
+.tc-msg.caregiver .tc-bubble { background:#2d6a4f; border-bottom-right-radius:4px; }
+.tc-translation { max-width:82%; font-size:12px; color:var(--muted); font-style:italic; line-height:1.5; padding:0 4px; opacity:0.65; }
+.tc-controls { background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); }
+.tc-who-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:8px; }
+.tc-toggle { display:flex; background:var(--bg); border-radius:10px; padding:3px; gap:3px; margin-bottom:12px; }
+.tc-toggle-btn { flex:1; padding:9px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; background:transparent; color:var(--muted); transition:all 0.15s; }
+.tc-toggle-btn.active-patient  { background:var(--navy); color:white; }
+.tc-toggle-btn.active-caregiver { background:#2d6a4f; color:white; }
+.tc-speak-btn { width:100%; border:none; border-radius:10px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; color:white; background:var(--navy); transition:background 0.2s; }
+.tc-speak-btn.listening { background:var(--red); animation:pulse 1.2s infinite; }
+
 @media print {
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body { background: white !important; }
   .sandbox-bar, header, nav, .summary-controls, #summary-meta,
   #sec-log, #sec-history, #sec-medications, #sec-patterns,
-  #sec-resources, #sec-alerts, #correction-modal,
+  #sec-translate, #sec-resources, #sec-alerts, #correction-modal,
   #patient-setup, #lock-screen, #recovery-screen,
   #emergency-overlay { display: none !important; }
   #sec-summary { display: block !important; padding: 0 !important; }
@@ -366,19 +561,28 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 </head>
 <body>
 
-{% if sandbox %}
-<div class="sandbox-bar">SANDBOX MODE — AI responses are simulated &nbsp;·&nbsp; No data sent to Claude or any external service</div>
-{% endif %}
-
 <header>
-  <h1>CareLog &nbsp;<span>Caregiver Daily Log</span></h1>
+  <div class="header-brand">
+    <div class="header-logo">🛡</div>
+    <div>
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <div class="header-name">CareLog</div>
+        {% if sandbox %}<span style="font-size:11px;font-weight:400;opacity:0.45;letter-spacing:0.3px;">demo mode</span>{% endif %}
+      </div>
+      <div class="header-tagline">For the people who keep showing up.</div>
+    </div>
+  </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span id="caregiver-name-display" style="display:none;" onclick="openPatientSetup()" title="Edit profile"></span>
     <span id="header-sep" class="header-sep" style="display:none;">caring for</span>
     <span id="patient-name-display" onclick="openPatientSetup()" title="Edit patient"></span>
+    <button id="lock-btn" onclick="lockApp()" title="Lock app"
+      style="display:none;background:rgba(255,255,255,0.12);border:none;color:white;border-radius:8px;padding:7px 11px;cursor:pointer;font-size:16px;line-height:1;">🔒</button>
     <span id="alert-badge">0</span>
   </div>
 </header>
+
+<div id="affirmation-strip"></div>
 
 <nav>
   <button class="active" onclick="showSection('log')">Log Today</button>
@@ -386,7 +590,9 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <button onclick="showSection('medications')">Medications</button>
   <button onclick="showSection('patterns')">Patterns</button>
   <button onclick="showSection('summary')">Summary</button>
+  <button onclick="showSection('translate')">Translate</button>
   <button onclick="showSection('resources')">Resources</button>
+  <button onclick="showSection('profile')">Profile</button>
   <button id="alerts-tab" onclick="showSection('alerts')">Alerts</button>
 </nav>
 
@@ -395,13 +601,14 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <!-- ── LOG TODAY ─────────────────────────────────────────────────────────── -->
   <section id="sec-log" class="section active">
 
-    <div id="checkin-box" class="card">
+    <div id="checkin-box">
       <p id="checkin-greeting">Loading…</p>
       <div class="context-tag" id="checkin-context"></div>
+      <div id="caregiver-context" style="display:none;margin-top:8px;font-size:13px;color:var(--muted);line-height:1.6;"></div>
     </div>
 
-    <div class="card card-patient">
-      <div class="card-label">Step 1 — Patient Observation</div>
+    <p class="section-label">Patient Observation</p>
+    <div class="input-glass">
       <textarea id="note-input" placeholder="He didn't sleep again last night. Seemed on edge this morning and skipped his PT appointment. Refused his medication at breakfast. Ate a little at dinner…"></textarea>
       <p style="font-size:13px;color:var(--muted);margin-top:10px;">
         Write or speak naturally — sleep, mood, meals, medications, appointments, anything that stood out.
@@ -411,67 +618,95 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
           <span id="voice-icon">🎙</span>
           <span id="voice-label">Speak</span>
         </button>
+        <span id="voice-mode-indicator" style="display:none;font-size:11px;color:var(--muted);font-style:italic;">listening for "take note"</span>
         <span id="char-count">0 characters</span>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitNote()" style="margin-left:auto;">Log Entry</button>
+      </div>
+
+      <div id="voice-command-banner" class="vc-banner" style="display:none;">
+        <div class="vc-title">Voice Commands</div>
+        <div class="vc-pills">
+          <span class="vc-pill">"Take note"</span>
+          <span class="vc-sep">start</span>
+          <span class="vc-pill">"Stop note"</span>
+          <span class="vc-sep">stop</span>
+          <span class="vc-pill">"Delete that"</span>
+          <span class="vc-sep">last word</span>
+          <span class="vc-pill">"Scratch that"</span>
+          <span class="vc-sep">last sentence</span>
+          <span class="vc-pill">"Clear note"</span>
+          <span class="vc-sep">start over</span>
+        </div>
+      </div>
+
+      <div class="inner-divider" id="ai-divider"></div>
+
+      <div id="extraction-result">
+        <div id="voice-confirmed-badge" style="display:none;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--green);margin-bottom:12px;letter-spacing:0.3px;">
+          <span>🎙</span> Voice confirmed
+        </div>
+        <div id="concern-box"></div>
+
+        <div id="ai-followup" class="followup-box" style="display:none;">
+          <div class="followup-label">CareLog asks</div>
+          <p id="followup-text"></p>
+        </div>
+
+        <div class="custom-topic-area">
+          <div id="custom-topics-display" style="margin:0 0 6px;"></div>
+          <div id="topic-suggestions-row" style="margin-bottom:8px;"></div>
+          <button class="btn btn-secondary btn-sm" id="add-topic-toggle" onclick="toggleTopicInput()" style="border-radius:50px;">+ Add a topic</button>
+          <div id="topic-input-area" style="display:none;margin-top:10px;">
+            <div class="topic-input-row">
+              <input type="text" id="custom-topic-input" placeholder="Short name — e.g. Pool Therapy, Morning Care"
+                     onkeydown="if(event.key==='Enter') document.getElementById('custom-topic-detail').focus()">
+              <button class="btn btn-secondary btn-sm" onclick="addCustomTopic()" style="border-radius:50px;white-space:nowrap;">Save</button>
+            </div>
+            <input type="text" id="custom-topic-detail"
+                   placeholder="Details (optional — e.g. first session, took 45 min, needed full assistance)"
+                   style="width:100%;margin-top:8px;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;"
+                   onkeydown="if(event.key==='Enter') addCustomTopic()">
+          </div>
+        </div>
+
+        <p class="sandbox-note" id="extraction-sandbox-note"></p>
       </div>
     </div>
 
-    <div class="card card-caregiver-entry">
-      <div class="card-label" style="color:var(--green);">Step 2 — Your Check-In</div>
-      <p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;">
+    <div class="section-divider"></div>
+
+    <p class="section-label">Caregiver Notes</p>
+    <div class="input-glass">
+      <textarea id="caregiver-note-input"
+        placeholder="How are you feeling? What's weighing on you? This is your space — not part of the patient log."
+        style="width:100%;min-height:100px;padding:14px;font-size:15px;border:1px solid rgba(0,0,0,0.07);border-radius:var(--radius);resize:vertical;font-family:inherit;line-height:1.6;transition:border-color 0.2s;background:transparent;"
+        onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor=''"></textarea>
+      <p style="font-size:13px;color:var(--muted);margin-top:10px;">Not included in patient reports.</p>
+
+      <p class="checkin-how" style="margin-top:18px;">
         How are you holding up today?
-        <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;">Optional</span>
+        <span class="checkin-optional">Optional</span>
       </p>
-      <div style="display:flex;gap:8px;margin-bottom:14px;" id="caregiver-rating-row">
+      <div style="display:flex;gap:8px;margin-bottom:4px;" id="caregiver-rating-row">
         <button class="rating-btn" data-rating="1" onclick="selectRating(1)" title="Struggling">1<span>Struggling</span></button>
         <button class="rating-btn" data-rating="2" onclick="selectRating(2)" title="Hard day">2<span>Hard</span></button>
         <button class="rating-btn" data-rating="3" onclick="selectRating(3)" title="Managing">3<span>Managing</span></button>
         <button class="rating-btn" data-rating="4" onclick="selectRating(4)" title="Good">4<span>Good</span></button>
         <button class="rating-btn" data-rating="5" onclick="selectRating(5)" title="Strong">5<span>Strong</span></button>
       </div>
-      <div id="caregiver-note-area" style="display:none;margin-bottom:14px;">
-        <textarea id="caregiver-note-input"
-          placeholder="How are you feeling? What's weighing on you? This is your space — not part of the patient log."
-          style="width:100%;min-height:90px;padding:12px 14px;font-size:15px;border:2px solid var(--green);border-radius:var(--radius);resize:vertical;font-family:inherit;line-height:1.6;transition:border-color 0.2s;"
-          onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--green)'"></textarea>
-      </div>
-      <div style="display:flex;justify-content:flex-end;">
-        <button class="btn btn-primary" id="submit-btn" onclick="submitNote()">Log Entry</button>
-      </div>
-    </div>
 
-    <div id="extraction-result" class="card">
-      <div id="concern-box"></div>
-
-      <!-- AI follow-up -->
-      <div id="ai-followup" class="followup-box" style="display:none;">
-        <div class="followup-label">CareLog asks</div>
-        <p id="followup-text"></p>
+      <div class="input-row" style="margin-top:14px;">
+        <button class="btn btn-voice" id="cg-voice-btn" onclick="toggleCgSpeak()">
+          <span class="cg-voice-icon">🎙</span>
+          <span class="cg-voice-label">Speak</span>
+        </button>
+        <button class="btn btn-primary" id="cg-submit-btn" onclick="submitCgNote()" style="margin-left:auto;">Log Entry</button>
       </div>
-
-      <!-- Custom topics -->
-      <div class="custom-topic-area">
-        <div id="custom-topics-display" style="margin:0 0 6px;"></div>
-        <div id="topic-suggestions-row" style="margin-bottom:8px;"></div>
-        <button class="btn btn-secondary btn-sm" id="add-topic-toggle" onclick="toggleTopicInput()" style="border-radius:50px;">+ Add a topic</button>
-        <div id="topic-input-area" style="display:none;margin-top:10px;">
-          <div class="topic-input-row">
-            <input type="text" id="custom-topic-input" placeholder="Short name — e.g. Pool Therapy, Morning Care"
-                   onkeydown="if(event.key==='Enter') document.getElementById('custom-topic-detail').focus()">
-            <button class="btn btn-secondary btn-sm" onclick="addCustomTopic()" style="border-radius:50px;white-space:nowrap;">Save</button>
-          </div>
-          <input type="text" id="custom-topic-detail"
-                 placeholder="Details (optional — e.g. first session, took 45 min, needed full assistance)"
-                 style="width:100%;margin-top:8px;padding:9px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;"
-                 onkeydown="if(event.key==='Enter') addCustomTopic()">
-        </div>
-      </div>
-
-      <p class="sandbox-note" id="extraction-sandbox-note"></p>
     </div>
 
     {% if sandbox %}
     <div style="text-align:center;margin-top:24px;">
-      <button class="btn btn-secondary" onclick="seedData()">Load sample data (14 days)</button>
+      <button class="btn btn-secondary" onclick="seedData()">Load sample data (120 days)</button>
       <p style="font-size:12px;color:var(--muted);margin-top:8px;">Loads realistic sample entries so you can explore patterns, summary, and alerts.</p>
     </div>
     {% endif %}
@@ -480,22 +715,51 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
 
   <!-- ── HISTORY ─────────────────────────────────────────────────────────── -->
   <section id="sec-history" class="section">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h2 style="color:var(--navy);font-size:18px;">Entry History</h2>
-      <span id="history-count" style="font-size:13px;color:var(--muted);"></span>
+    <div class="cal-nav">
+      <div class="cal-nav-group">
+        <button class="cal-nav-btn" id="cal-prev-year-btn" onclick="calShiftYear(-1)" title="Previous year">«</button>
+        <button class="cal-nav-btn" id="cal-prev-btn" onclick="calShiftMonth(-1)" title="Previous month">‹</button>
+      </div>
+      <div style="text-align:center;">
+        <div class="cal-month-title" id="cal-month-title"></div>
+        <div class="cal-legend">
+          <span class="cal-bar-swatch emergency"></span>Alert
+          <span class="cal-bar-swatch pattern"></span>Pattern
+          <span class="cal-bar-swatch translation"></span>Translation
+          <span class="cal-bar-swatch obs"></span>Entry
+        </div>
+      </div>
+      <div class="cal-nav-group">
+        <button class="cal-nav-btn" id="cal-next-btn" onclick="calShiftMonth(1)" title="Next month">›</button>
+        <button class="cal-nav-btn" id="cal-next-year-btn" onclick="calShiftYear(1)" title="Next year">»</button>
+      </div>
     </div>
-    <div id="history-list"></div>
-    <div id="history-load-more" style="text-align:center;margin-top:16px;display:none;">
-      <button class="btn btn-secondary" onclick="loadHistory(true)">Load more</button>
+    <div class="cal-jump-row">
+      <button class="cal-jump-btn" id="cal-jump-start" onclick="calJumpToStart()">⚑ Start of Care</button>
+      <button class="cal-jump-btn" id="cal-jump-today" onclick="calJumpToToday()">Today ›</button>
     </div>
+
+    <div class="cal-dow-row-main">
+      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+    </div>
+    <div id="cal-month-grid" class="cal-month-grid"></div>
+
+    <div id="cal-month-summary" class="cal-month-summary"></div>
+
+    <div id="cal-selection-bar" class="cal-selection-bar" style="display:none;">
+      <span id="cal-selection-label"></span>
+      <button class="cal-selection-clear" onclick="calClearSelection()">Clear selection</button>
+    </div>
+
+    <div id="cal-panel" class="cal-panel"></div>
   </section>
 
   <!-- ── MEDICATIONS ─────────────────────────────────────────────────────── -->
   <section id="sec-medications" class="section">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <div class="section-row">
       <div>
-        <h2 style="color:var(--navy);font-size:18px;margin-bottom:4px;">Medications</h2>
-        <p style="font-size:14px;color:var(--muted);">Track current medications. CareLog checks for interactions when you add a new one.</p>
+        <h2 class="section-h">Medications</h2>
+        <p class="muted-note">Track current medications. CareLog checks for interactions when you add a new one.</p>
       </div>
       <button class="btn btn-primary btn-sm" onclick="openAddMed()" style="white-space:nowrap;">+ Add Medication</button>
     </div>
@@ -550,7 +814,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <!-- ── PATTERNS ─────────────────────────────────────────────────────────── -->
   <section id="sec-patterns" class="section">
     <div style="margin-bottom:16px;">
-      <h2 style="color:var(--navy);font-size:18px;margin-bottom:6px;">Pattern Flags</h2>
+      <h2 class="section-h">Pattern Flags</h2>
       <p style="font-size:14px;color:var(--muted);">Issues that have come up 3 or more times in the last 7 days. Worth mentioning to the care team.</p>
     </div>
     <div id="patterns-list"></div>
@@ -582,17 +846,58 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
     </div>
   </section>
 
-  <!-- ── RESOURCES ────────────────────────────────────────────────────── -->
+  <!-- ── TRANSLATE ──────────────────────────────────────────────────────── -->
+  <section id="sec-translate" class="section">
+    <div id="translate-no-lang" style="display:none;background:#FEF9E7;border:1px solid #F0C040;border-radius:var(--radius);padding:14px 16px;font-size:13px;color:#7D6608;line-height:1.5;">
+      No patient language set. Tap the patient name at the top and select their primary language.
+    </div>
+
+    <div id="translate-chat" style="display:none;">
+      <div class="tc-header">
+        <div class="tc-header-left">
+          <h2 id="tc-title"></h2>
+          <p id="tc-subtitle"></p>
+        </div>
+        <button class="tc-clear-btn" onclick="clearTranslate()">Clear</button>
+      </div>
+
+      <div id="tc-messages" class="tc-window">
+        <div id="tc-empty" class="tc-empty-msg">Select who is speaking below, then tap Speak.</div>
+      </div>
+
+      <div class="tc-controls">
+        <div class="tc-who-label">Who is speaking?</div>
+        <div class="tc-toggle">
+          <button id="tc-toggle-patient" class="tc-toggle-btn active-patient" onclick="tcSelect('patient')">
+            <span id="tc-patient-label"></span>
+          </button>
+          <button id="tc-toggle-caregiver" class="tc-toggle-btn" onclick="tcSelect('caregiver')">
+            <span id="tc-caregiver-label"></span>
+          </button>
+        </div>
+        <button id="tc-speak-btn" class="tc-speak-btn" onclick="tcSpeak()">🎙 Speak</button>
+      </div>
+    </div>
+  </section>
+
   <section id="sec-resources" class="section">
-    <h2 style="color:var(--navy);font-size:18px;margin-bottom:6px;">Resources</h2>
-    <p style="font-size:14px;color:var(--muted);margin-bottom:20px;">Support programs, crisis lines, and services for caregivers. Updated based on your profile.</p>
+    <h2 class="section-h">Your Support Network</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:12px;">Caregiving is hard. These are real people and real lines — not a brochure rack.</p>
+    <div style="background:var(--positive-bg);border-radius:var(--radius);padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--positive-text);font-weight:600;line-height:1.6;">
+      You don't have to be in crisis to call. These lines exist for exactly the kind of day you're having.
+    </div>
     <div id="resources-list"></div>
+  </section>
+
+  <!-- ── PROFILE ───────────────────────────────────────────────────────── -->
+  <section id="sec-profile" class="section">
+    <div id="profile-content"></div>
   </section>
 
   <!-- ── ALERTS ─────────────────────────────────────────────────────────── -->
   <section id="sec-alerts" class="section">
     <div style="margin-bottom:16px;">
-      <h2 style="color:var(--navy);font-size:18px;margin-bottom:12px;">Alert Log</h2>
+      <h2 class="section-h" style="margin-bottom:12px;">Alert Log</h2>
       <div class="alert-filter-cards" id="alert-filter-cards">
         <div class="alert-filter-card afc-all active" onclick="setAlertFilter('all', this)">
           <div class="afc-count" id="afc-count-all">—</div>
@@ -650,7 +955,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <!-- ── DELETION REQUEST MODAL ─────────────────────────────────────────────── -->
   <div id="deletion-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;padding:24px;">
     <div style="background:white;border-radius:12px;padding:28px;max-width:460px;width:100%;margin:0 auto;">
-      <h2 style="font-size:17px;color:var(--navy);margin-bottom:6px;">Request Alert Deletion</h2>
+      <h2 class="section-h" style="font-size:17px;">Request Alert Deletion</h2>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Your request will be permanently logged. A confirmation code will be issued — a second step with PIN verification is required to complete deletion.</p>
 
       <div id="deletion-request-form">
@@ -678,7 +983,7 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <!-- ── DELETION CONFIRM MODAL ─────────────────────────────────────────────── -->
   <div id="deletion-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;overflow-y:auto;padding:24px;">
     <div style="background:white;border-radius:12px;padding:28px;max-width:420px;width:100%;margin:0 auto;">
-      <h2 style="font-size:17px;color:var(--red);margin-bottom:6px;">Confirm Deletion</h2>
+      <h2 style="font-size:17px;color:var(--red);margin-bottom:6px;font-weight:700;">Confirm Deletion</h2>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Enter the confirmation code from your request and your PIN to complete deletion. This action cannot be undone — the audit record remains permanently.</p>
       <input type="hidden" id="confirm-alert-id">
       <label style="font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:4px;">Confirmation code</label>
@@ -696,6 +1001,13 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   </div>
 
 </main>
+
+<footer>
+  <div class="footer-inner">
+    <p class="footer-trust">🔒 Your data stays on this device — nothing is shared, sold, or transmitted.</p>
+    <p class="footer-disclaimer">CareLog is not a clinical assessment tool. AI flags observations — your judgment and your care team make all decisions.<br>In an emergency, call 911. For mental health crisis, call or text 988.</p>
+  </div>
+</footer>
 
 <!-- ── CAREGIVER CHECK-IN ─────────────────────────────────────────────────── -->
 <div id="caregiver-checkin-overlay">
@@ -795,6 +1107,18 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
   <button class="lock-forgot" id="lock-forgot-btn" onclick="openRecovery()">Forgot PIN?</button>
 </div>
 
+<div id="voice-mode-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:4000;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:var(--card);border-radius:16px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <div style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:12px;">Voice Mode</div>
+    <p style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">Say <strong>"Take note"</strong> to start recording and <strong>"Stop note"</strong> when you're done.</p>
+    <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:24px;">The app listens for these two phrases while it's open. Nothing is recorded or stored until you say "Take note."</p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="setVoiceMode('enabled')" style="background:var(--navy);color:white;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;">Enable Voice Mode</button>
+      <button onclick="setVoiceMode('disabled')" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:13px;font-size:14px;cursor:pointer;">No thanks, I'll use the button</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── RECOVERY SCREEN ───────────────────────────────────────────────────── -->
 <div id="recovery-screen">
   <div class="recovery-box">
@@ -877,13 +1201,78 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
       </div>
     </div>
     <div class="setup-field">
+      <label>Their primary language <span class="optional">(optional — for two-way translation)</span></label>
+      <select id="setup-patient-language" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:8px;font-size:15px;background:white;color:var(--text);">
+        <option value="">English (no translation needed)</option>
+        <option value="af">Afrikaans</option>
+        <option value="am">Amharic</option>
+        <option value="ar">Arabic</option>
+        <option value="bn">Bengali</option>
+        <option value="bg">Bulgarian</option>
+        <option value="ca">Catalan</option>
+        <option value="zh">Chinese (Simplified)</option>
+        <option value="zh-TW">Chinese (Traditional)</option>
+        <option value="hr">Croatian</option>
+        <option value="cs">Czech</option>
+        <option value="da">Danish</option>
+        <option value="nl">Dutch</option>
+        <option value="et">Estonian</option>
+        <option value="tl">Filipino / Tagalog</option>
+        <option value="fi">Finnish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="el">Greek</option>
+        <option value="gu">Gujarati</option>
+        <option value="he">Hebrew</option>
+        <option value="hi">Hindi</option>
+        <option value="hu">Hungarian</option>
+        <option value="id">Indonesian</option>
+        <option value="it">Italian</option>
+        <option value="ja">Japanese</option>
+        <option value="kn">Kannada</option>
+        <option value="km">Khmer</option>
+        <option value="ko">Korean</option>
+        <option value="lo">Lao</option>
+        <option value="lv">Latvian</option>
+        <option value="lt">Lithuanian</option>
+        <option value="ms">Malay</option>
+        <option value="ml">Malayalam</option>
+        <option value="mr">Marathi</option>
+        <option value="ne">Nepali</option>
+        <option value="no">Norwegian</option>
+        <option value="fa">Persian / Farsi</option>
+        <option value="pl">Polish</option>
+        <option value="pt">Portuguese</option>
+        <option value="pa">Punjabi</option>
+        <option value="ro">Romanian</option>
+        <option value="ru">Russian</option>
+        <option value="sr">Serbian</option>
+        <option value="si">Sinhala</option>
+        <option value="sk">Slovak</option>
+        <option value="es">Spanish</option>
+        <option value="sw">Swahili</option>
+        <option value="sv">Swedish</option>
+        <option value="ta">Tamil</option>
+        <option value="te">Telugu</option>
+        <option value="th">Thai</option>
+        <option value="tr">Turkish</option>
+        <option value="uk">Ukrainian</option>
+        <option value="ur">Urdu</option>
+        <option value="vi">Vietnamese</option>
+      </select>
+    </div>
+
+    <div class="setup-field">
       <label>Local crisis line number <span class="optional">(optional)</span></label>
       <input type="text" id="setup-local-crisis" placeholder="e.g. 1-844-493-8255" autocomplete="off">
       <p style="font-size:12px;color:var(--muted);margin-top:6px;">If you have a local crisis number, it will appear on your emergency screen. Leave blank to use national defaults.</p>
     </div>
-    <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin:20px 0 14px;">Set a PIN</p>
+    <div style="background:#FEF9E7;border:1px solid #F0C040;border-radius:var(--radius);padding:12px 16px;margin:20px 0 16px;">
+      <p style="font-size:13px;font-weight:700;color:#7D6608;margin-bottom:4px;">🔒 Set a PIN to protect your logs</p>
+      <p style="font-size:12px;color:#7D6608;line-height:1.5;">This app contains sensitive health observations. Without a PIN, anyone who picks up this device can read your entries.</p>
+    </div>
     <div class="setup-field">
-      <label>4-digit PIN <span class="optional">(locks app on next visit)</span></label>
+      <label>4-digit PIN</label>
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="password" id="setup-pin" placeholder="····" maxlength="4" inputmode="numeric" pattern="[0-9]*"
                style="width:110px;padding:12px 14px;border:2px solid var(--border);border-radius:8px;font-size:22px;letter-spacing:8px;text-align:center;font-family:monospace;"
@@ -894,7 +1283,6 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
         <span style="font-size:12px;color:var(--muted);line-height:1.4;">Enter PIN<br>then confirm</span>
       </div>
       <p id="setup-pin-error" style="font-size:12px;color:var(--red);margin-top:6px;display:none;"></p>
-      <p style="font-size:12px;color:var(--muted);margin-top:6px;">If you skip this, anyone who opens the app can see your logs.</p>
     </div>
     <div class="setup-field" id="setup-recovery-field" style="display:none;">
       <label>Recovery question <span class="optional">(if you forget your PIN)</span></label>
@@ -916,6 +1304,33 @@ main { max-width: 780px; margin: 0 auto; padding: 24px 16px; }
              style="width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
       <p id="setup-recovery-error" style="font-size:12px;color:var(--red);margin-top:6px;display:none;"></p>
     </div>
+    <div style="background:#EBF5FB;border:1px solid #AED6F1;border-radius:var(--radius);padding:16px 18px;margin:20px 0 24px;">
+      <p style="font-size:13px;font-weight:700;color:#1A5276;margin-bottom:4px;">🎙 Voice ID <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;">Optional</span></p>
+      <p style="font-size:12px;color:#1A5276;line-height:1.6;margin-bottom:14px;">Calibrates noise filtering to your voice and ties entries to your identity. One-time setup — about 5 seconds.</p>
+
+      <div id="voice-enroll-area">
+        <button class="btn btn-secondary btn-sm" onclick="startVoiceEnrollment()" id="voice-enroll-btn" style="border-radius:50px;margin-right:10px;">Enable Voice ID</button>
+        <button onclick="skipVoiceEnrollment()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">Skip</button>
+      </div>
+
+      <div id="voice-enroll-recording" style="display:none;">
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Say this out loud:</p>
+        <p id="voice-enroll-phrase" style="font-size:15px;font-style:italic;color:var(--navy);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.6);border-radius:6px;"></p>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite;flex-shrink:0;"></div>
+          <span id="voice-enroll-status" style="font-size:13px;color:var(--muted);">Listening…</span>
+        </div>
+      </div>
+
+      <div id="voice-enroll-done" style="display:none;">
+        <p style="font-size:13px;color:var(--green);font-weight:600;">✓ Voice ID enrolled. Your entries will be voice-confirmed.</p>
+      </div>
+
+      <div id="voice-enroll-skipped" style="display:none;">
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">Voice is still available — accuracy in noisy environments isn't guaranteed and your entries won't be tied to your identity.</p>
+      </div>
+    </div>
+
     <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;" onclick="savePatient()">Start logging</button>
   </div>
 </div>
@@ -946,14 +1361,73 @@ let setupVeteran    = false;
 let setupRelationship = null;
 let currentCustomTopics = [];
 
-let selectedRating  = null;
+let selectedRating        = null;
+let lastSubmittedRating   = null;
+let pinIsSet              = false;
+
+const AFFIRMATIONS = [
+  { headline: 'You are doing enough.',
+    body: 'The fear of falling short is heavy, but your effort, presence, and care are more than enough.' },
+  { headline: 'You have permission to take a break without explaining why.',
+    body: 'Stepping away to rest is a requirement for your health, not a luxury.' },
+  { headline: 'I choose to be gentle and patient with myself today.', body: null },
+
+  { headline: 'Your frustrations do not cancel out your love.',
+    body: 'It is entirely normal to feel overwhelmed, tired, or angry. Holding both grief and devotion at the same time is part of being human.' },
+  { headline: 'You do not have to be strong 100% of the time.',
+    body: 'You are allowed to cry, vent, or simply have a hard day.' },
+  { headline: 'My own wellness, peace, and health are worth protecting.', body: null },
+
+  { headline: 'You are seen, even in the quiet hours.',
+    body: 'The late-night checks, the endless phone calls, and the heavy emotional labor do not go unnoticed.' },
+  { headline: 'Accepting help is an act of survival, not a sign of weakness.',
+    body: 'You were never meant to carry the entirety of this journey alone.' },
+  { headline: 'I release the pressure of trying to create a perfect day, and focus on doing what I can.', body: null },
+
+  { headline: 'The grief you feel is real.',
+    body: 'Watching someone you love change is a form of loss, even when they are still here. What you are mourning is valid.' },
+  { headline: 'You have permission to grieve without a timeline.',
+    body: 'There is no deadline for processing what this has asked of you.' },
+  { headline: 'Today, I will notice one thing I did right.', body: null },
+
+  { headline: 'You are not failing when it gets hard.',
+    body: 'Hard days are not proof you are doing it wrong. They are proof of how much this costs you, and how much you give anyway.' },
+  { headline: 'You are allowed to want your own life back.',
+    body: 'Wanting space, rest, and time for yourself is not selfish. It is honest.' },
+  { headline: 'I am not alone, even when this feels isolating.', body: null },
+
+  { headline: 'Your presence is the most powerful medicine you can offer.',
+    body: 'No care plan, no medication schedule, and no clinical team replaces the person who shows up every single day.' },
+  { headline: 'You do not owe anyone a performance of coping.',
+    body: 'You do not have to pretend you are fine — not for family, not for providers, not for anyone.' },
+  { headline: 'I give myself credit for showing up — especially on the days when showing up was everything.', body: null },
+
+  { headline: 'It is okay not to have the answers.',
+    body: 'You are not required to know what comes next. One day, one decision, one moment at a time is enough.' },
+  { headline: "Saying 'I need help' is a complete sentence.",
+    body: 'You do not need to justify it, explain it, or apologize for it.' },
+  { headline: 'I do not have to carry yesterday\'s weight into today.', body: null },
+
+  { headline: 'The love underneath the exhaustion is still love.',
+    body: 'Feeling worn down does not mean you have run out of care. It means you have been giving it without enough coming back.' },
+  { headline: 'You are allowed to feel proud of what you are doing.',
+    body: 'This is hard. You are doing it anyway. That is worth recognizing.' },
+  { headline: 'The care I give matters, even when no one is watching.', body: null },
+
+  { headline: 'I am learning as I go, and that is enough.', body: null },
+  { headline: 'Today, I choose to ask for what I need.', body: null },
+  { headline: 'I am doing something extraordinary, even when it feels ordinary.', body: null },
+  { headline: 'My limits are not weaknesses — they are signals worth listening to.', body: null },
+  { headline: 'I release the need to be everything to everyone today.', body: null },
+  { headline: 'Today, I give myself the same compassion I give to the person I care for.', body: null },
+];
 
 // ── PIN lock state ────────────────────────────────────────────────────────────
 let pinBuffer       = '';
 let lockTimer       = null;
 let autoLockMinutes = 15;
 
-const NAV_ORDER = ['log','history','medications','patterns','summary','resources','alerts'];
+const NAV_ORDER = ['log','history','medications','patterns','summary','translate','resources','profile','alerts'];
 
 const TAG_ICONS = {
   sleep:'😴', mood:'💭', appetite:'🍽', medication:'💊',
@@ -961,8 +1435,14 @@ const TAG_ICONS = {
 };
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// ── PWA service worker ────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   await checkLock();   // show lock screen before anything else if PIN is set
+  loadVoiceProfile();
   initVoice();
   const noteInput = document.getElementById('note-input');
   noteInput.addEventListener('input', updateCharCount);
@@ -993,19 +1473,24 @@ async function checkLock() {
   const r = await fetch('/api/pin/status');
   const d = await r.json();
   if (!d.pin_set) {
-    // No PIN — load app normally
     loadPatient();
     loadAlertBadge();
     return;
   }
+  pinIsSet = true;
+  document.getElementById('lock-btn').style.display = 'inline-block';
   autoLockMinutes = d.auto_lock_minutes || 15;
-  // Check if already unlocked this session
   if (sessionStorage.getItem('carelog_unlocked') === '1') {
     loadPatient();
     loadAlertBadge();
     resetLockTimer();
     return;
   }
+  showLockScreen();
+}
+
+function lockApp() {
+  sessionStorage.removeItem('carelog_unlocked');
   showLockScreen();
 }
 
@@ -1039,6 +1524,12 @@ function hideLockScreen() {
   resetLockTimer();
   loadPatient();
   loadAlertBadge();
+  const voiceMode = localStorage.getItem('carelog_voice_mode');
+  if (!voiceMode) {
+    document.getElementById('voice-mode-modal').style.display = 'flex';
+  } else if (voiceMode === 'enabled') {
+    startWakeListener();
+  }
 }
 
 function resetLockTimer() {
@@ -1253,6 +1744,7 @@ async function loadPatient() {
   } else {
     openPatientSetup();
   }
+  showAffirmation();
 }
 
 async function loadLastEntry() {
@@ -1290,6 +1782,7 @@ function openPatientSetup() {
   if (currentPatient) {
     document.getElementById('setup-name').value = currentPatient.name;
     document.getElementById('setup-local-crisis').value = currentPatient.local_crisis_number || '';
+    document.getElementById('setup-patient-language').value = currentPatient.patient_language || '';
     selectVeteran(currentPatient.is_veteran);
   }
   if (currentCaregiver) {
@@ -1334,7 +1827,13 @@ async function savePatient() {
   const recAnswer = document.getElementById('setup-recovery-answer').value.trim();
   const recErr  = document.getElementById('setup-recovery-error');
 
-  if (pin) {
+  if (!pin) {
+    pinErr.textContent = 'No PIN set — your logs will be visible to anyone who opens this app. Enter a PIN above to protect them, or tap Save again to continue without one.';
+    pinErr.style.display = 'block';
+    if (!pinErr.dataset.confirmed) { pinErr.dataset.confirmed = '1'; return; }
+    pinErr.style.display = 'none';
+  } else {
+    pinErr.dataset.confirmed = '';
     if (!/^\d{4}$/.test(pin)) {
       pinErr.textContent = 'PIN must be exactly 4 digits.'; pinErr.style.display = 'block'; return;
     }
@@ -1352,7 +1851,7 @@ async function savePatient() {
     fetch('/api/patient', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({name: patientName, is_veteran: setupVeteran, local_crisis_number: local || null})
+      body: JSON.stringify({name: patientName, is_veteran: setupVeteran, local_crisis_number: local || null, patient_language: document.getElementById('setup-patient-language').value || null})
     }),
     fetch('/api/caregiver', {
       method: 'POST',
@@ -1400,11 +1899,53 @@ function showSection(name) {
   document.querySelectorAll('nav button')[idx]?.classList.add('active');
 
   if (name !== 'summary') document.getElementById('print-btn').style.display = 'none';
-  if (name === 'history')     { historyOffset = 0; loadHistory(false); }
+  if (name === 'history')     initCalendar();
   if (name === 'medications') loadMedications();
   if (name === 'patterns')    loadPatterns();
+  if (name === 'translate')   initTranslateSection();
   if (name === 'resources')   loadResources();
-  if (name === 'alerts')      loadAlerts();
+  if (name === 'profile')     loadProfileTab();
+  if (name === 'alerts') {
+    loadAlerts();
+    const badge = document.getElementById('alert-badge');
+    const count = parseInt(badge.textContent) || 0;
+    if (count > 0) localStorage.setItem('alerts_seen_count', count);
+    badge.style.display = 'none';
+    document.getElementById('alerts-tab').innerHTML = 'Alerts';
+  }
+}
+
+// ── Daily affirmation ─────────────────────────────────────────────────────────
+function showAffirmation() {
+  const el = document.getElementById('affirmation-strip');
+  const start = new Date(new Date().getFullYear(), 0, 0).getTime();
+  let index = Math.floor((Date.now() - start) / 86400000) % AFFIRMATIONS.length;
+
+  function nextSlide() {
+    index = (index + 1) % AFFIRMATIONS.length;
+    const span = document.createElement('span');
+    span.textContent = AFFIRMATIONS[index].headline;
+    el.innerHTML = '';
+    el.appendChild(span);
+    span.addEventListener('animationiteration', nextSlide, { once: true });
+  }
+
+  function startLoop() {
+    index = (index + 1) % AFFIRMATIONS.length;
+    const span = document.createElement('span');
+    span.textContent = AFFIRMATIONS[index].headline;
+    el.innerHTML = '';
+    el.appendChild(span);
+    span.addEventListener('animationiteration', nextSlide, { once: true });
+  }
+
+  // First appearance: start from center, exit left
+  const firstSpan = document.createElement('span');
+  firstSpan.textContent = AFFIRMATIONS[index].headline;
+  firstSpan.style.animation = 'marquee-first 40s linear 1';
+  el.innerHTML = '';
+  el.appendChild(firstSpan);
+  firstSpan.addEventListener('animationend', startLoop, { once: true });
 }
 
 // ── Check-in greeting ─────────────────────────────────────────────────────────
@@ -1417,6 +1958,13 @@ async function loadCheckin() {
       document.getElementById('checkin-context').textContent =
         `Based on ${d.context.count} entries in the last ${d.context.days} days`;
     }
+    const cgCtx = document.getElementById('caregiver-context');
+    if (d.caregiver_note) {
+      cgCtx.textContent = d.caregiver_note;
+      cgCtx.style.display = 'block';
+    } else {
+      cgCtx.style.display = 'none';
+    }
   } catch(e) {
     document.getElementById('checkin-greeting').textContent = 'Welcome back. How are things going today?';
   }
@@ -1428,15 +1976,210 @@ function selectRating(val) {
   document.querySelectorAll('.rating-btn').forEach(b => {
     b.classList.toggle('selected', parseInt(b.dataset.rating) === val);
   });
-  const area = document.getElementById('caregiver-note-area');
-  area.style.display = 'block';
   document.getElementById('caregiver-note-input').focus();
+}
+
+async function submitCgNote() {
+  const cgNote = (document.getElementById('caregiver-note-input').value || '').trim();
+  if (!cgNote && !selectedRating) {
+    document.getElementById('caregiver-note-input').focus();
+    return;
+  }
+  const btn = document.getElementById('cg-submit-btn');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+  try {
+    await fetch('/api/caregiver-rating', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({rating: selectedRating || null, notes: cgNote || null})
+    });
+    selectedRating = null;
+    document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('caregiver-note-input').value = '';
+    cgCommitted = '';
+    btn.textContent = 'Saved ✓';
+    setTimeout(() => { btn.textContent = 'Log Entry'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    alert('Something went wrong. Please try again.');
+    btn.textContent = 'Log Entry';
+    btn.disabled = false;
+  }
 }
 
 // ── Character count ───────────────────────────────────────────────────────────
 function updateCharCount() {
   const n = document.getElementById('note-input').value.length;
   document.getElementById('char-count').textContent = n + ' characters';
+}
+
+// ── Voice enrollment & calibration ────────────────────────────────────────────
+let voiceProfile = null; // loaded from backend on init
+
+async function loadVoiceProfile() {
+  try {
+    const r = await fetch('/api/voice/profile');
+    const d = await r.json();
+    if (d.enrolled) voiceProfile = d;
+  } catch(e) {}
+}
+
+function getEnrollmentPhrase() {
+  const name = document.getElementById('setup-name')?.value.trim() || 'them';
+  return `I'm here. Let's take care of ${name}.`;
+}
+
+async function startVoiceEnrollment() {
+  document.getElementById('voice-enroll-area').style.display = 'none';
+  document.getElementById('voice-enroll-recording').style.display = 'block';
+  document.getElementById('voice-enroll-phrase').textContent = getEnrollmentPhrase();
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: true, noiseSuppression: true, autoGainControl: true
+    }});
+  } catch(e) {
+    document.getElementById('voice-enroll-recording').style.display = 'none';
+    document.getElementById('voice-enroll-area').style.display = 'block';
+    alert('Microphone access is needed for Voice ID.');
+    return;
+  }
+
+  const features = await extractVoiceFeatures(stream, 6000, status => {
+    document.getElementById('voice-enroll-status').textContent = status;
+  });
+
+  stream.getTracks().forEach(t => t.stop());
+
+  try {
+    await fetch('/api/voice/enroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...features, phrase: getEnrollmentPhrase() })
+    });
+    voiceProfile = features;
+    document.getElementById('voice-enroll-recording').style.display = 'none';
+    document.getElementById('voice-enroll-done').style.display = 'block';
+  } catch(e) {
+    document.getElementById('voice-enroll-recording').style.display = 'none';
+    document.getElementById('voice-enroll-area').style.display = 'block';
+  }
+}
+
+function skipVoiceEnrollment() {
+  document.getElementById('voice-enroll-area').style.display = 'none';
+  document.getElementById('voice-enroll-skipped').style.display = 'block';
+}
+
+async function extractVoiceFeatures(stream, durationMs, onStatus) {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioCtx.createMediaStreamSource(stream);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+
+  const freqData = new Float32Array(analyser.frequencyBinCount);
+  const timeData = new Float32Array(analyser.fftSize);
+  const profileSamples = [], pitches = [], energies = [], centroids = [];
+
+  const countdown = Math.ceil(durationMs / 1000);
+  let secondsLeft = countdown;
+  if (onStatus) onStatus(`Listening… ${secondsLeft}s`);
+
+  const countInterval = setInterval(() => {
+    secondsLeft--;
+    if (onStatus && secondsLeft > 0) onStatus(`Listening… ${secondsLeft}s`);
+  }, 1000);
+
+  await new Promise(resolve => {
+    const sample = setInterval(() => {
+      analyser.getFloatFrequencyData(freqData);
+      analyser.getFloatTimeDomainData(timeData);
+
+      // Energy RMS
+      let rms = 0;
+      for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
+      energies.push(Math.sqrt(rms / timeData.length));
+
+      // Pitch — dominant frequency in voice range (80–400 Hz)
+      const nyquist = audioCtx.sampleRate / 2;
+      const binFreq = nyquist / freqData.length;
+      const minBin = Math.floor(80 / binFreq), maxBin = Math.floor(400 / binFreq);
+      let maxMag = -Infinity, pitchBin = minBin;
+      for (let i = minBin; i <= maxBin; i++) {
+        if (freqData[i] > maxMag) { maxMag = freqData[i]; pitchBin = i; }
+      }
+      if (maxMag > -50) pitches.push(pitchBin * binFreq);
+
+      // Spectral centroid
+      let wSum = 0, tMag = 0;
+      for (let i = 0; i < freqData.length; i++) {
+        const mag = Math.pow(10, freqData[i] / 20);
+        wSum += (i * binFreq) * mag; tMag += mag;
+      }
+      centroids.push(tMag > 0 ? wSum / tMag : 0);
+
+      // 32-bin frequency profile
+      const binSize = Math.floor(freqData.length / 32);
+      const profile = [];
+      for (let i = 0; i < 32; i++) {
+        let s = 0;
+        for (let j = i * binSize; j < (i+1) * binSize; j++) s += Math.pow(10, freqData[j] / 20);
+        profile.push(s / binSize);
+      }
+      profileSamples.push(profile);
+    }, 120);
+
+    setTimeout(() => { clearInterval(sample); resolve(); }, durationMs);
+  });
+
+  clearInterval(countInterval);
+  await audioCtx.close();
+
+  // Average and normalize frequency profile
+  const avgProfile = new Array(32).fill(0);
+  for (const p of profileSamples) p.forEach((v, i) => avgProfile[i] += v);
+  avgProfile.forEach((v, i) => avgProfile[i] = v / profileSamples.length);
+  const maxVal = Math.max(...avgProfile);
+  const normProfile = avgProfile.map(v => maxVal > 0 ? v / maxVal : 0);
+
+  const mean = arr => arr.length ? arr.reduce((a,b) => a+b) / arr.length : 0;
+  const std = (arr, m) => arr.length > 1 ? Math.sqrt(arr.map(v => Math.pow(v-m,2)).reduce((a,b)=>a+b) / arr.length) : 0;
+  const pm = mean(pitches);
+
+  return {
+    pitch_mean: pm,
+    pitch_std: std(pitches, pm),
+    energy_mean: mean(energies),
+    spectral_centroid: mean(centroids),
+    freq_profile: normProfile
+  };
+}
+
+async function verifyVoiceMatch(stream) {
+  if (!voiceProfile) return { verified: false, reason: 'not_enrolled' };
+  const features = await extractVoiceFeatures(stream, 3000, null);
+  try {
+    const r = await fetch('/api/voice/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(features)
+    });
+    return await r.json();
+  } catch(e) {
+    return { verified: false, reason: 'error' };
+  }
+}
+
+function applyVoiceCalibration(audioCtx, source) {
+  if (!voiceProfile || !voiceProfile.spectral_centroid) return source;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = voiceProfile.spectral_centroid;
+  filter.Q.value = 1.2;
+  source.connect(filter);
+  return filter;
 }
 
 // ── Voice input ───────────────────────────────────────────────────────────────
@@ -1461,12 +2204,39 @@ function initVoice() {
     interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        const chunk = e.results[i][0].transcript;
-        if (/\b(log\s*it|log\s*entry|submit|save\s*it|done|send\s*it)\b/i.test(chunk)) {
+        const chunk = e.results[i][0].transcript.trim();
+        const cmd   = chunk.toLowerCase();
+
+        // Stop commands — end recording, do not add to transcript
+        if (/\bstop\s*note\b/.test(cmd)) {
           stopRecording();
-          submitNote();
           return;
         }
+
+        // Delete last word
+        if (/^(delete|delete\s+that)$/.test(cmd)) {
+          committed = committed.trimEnd().replace(/\S+\s*$/, '');
+          document.getElementById('note-input').value = committed;
+          updateCharCount();
+          return;
+        }
+
+        // Scratch last sentence
+        if (/^scratch\s+that$/.test(cmd)) {
+          committed = committed.trimEnd().replace(/[^.!?]*[.!?]?\s*$/, '');
+          document.getElementById('note-input').value = committed;
+          updateCharCount();
+          return;
+        }
+
+        // Clear everything
+        if (/^clear\s+note$/.test(cmd)) {
+          committed = '';
+          document.getElementById('note-input').value = '';
+          updateCharCount();
+          return;
+        }
+
         committed += chunk + ' ';
       } else {
         interim += e.results[i][0].transcript;
@@ -1485,24 +2255,45 @@ function initVoice() {
     stopRecording();
   };
 
+  window.startRecordingFresh = function() {
+    committed = '';
+    interim   = '';
+    document.getElementById('note-input').value = '';
+    startRecording();
+  };
+
   document.getElementById('voice-btn').addEventListener('click', () => {
     if (isRecording) {
       stopRecording();
     } else {
-      committed = '';
-      interim   = '';
-      document.getElementById('note-input').value = '';
-      startRecording();
+      window.startRecordingFresh();
     }
   });
+
 }
 
 function startRecording() {
+  if (isCgRecording) stopCgRecording();
+  stopWakeListener();
   recognition.start();
   isRecording = true;
   document.getElementById('voice-btn').classList.add('recording');
   document.getElementById('voice-icon').textContent  = '⏹';
   document.getElementById('voice-label').textContent = 'Stop';
+  if (localStorage.getItem('carelog_voice_mode') === 'enabled') flashCommandBanner();
+}
+
+let bannerTimer = null;
+function flashCommandBanner() {
+  const b = document.getElementById('voice-command-banner');
+  b.classList.remove('fading');
+  b.style.display = 'block';
+  b.style.opacity = '1';
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => {
+    b.classList.add('fading');
+    b.addEventListener('animationend', () => { b.style.display = 'none'; b.classList.remove('fading'); }, { once: true });
+  }, 100);
 }
 
 function stopRecording() {
@@ -1511,6 +2302,138 @@ function stopRecording() {
   document.getElementById('voice-btn').classList.remove('recording');
   document.getElementById('voice-icon').textContent  = '🎙';
   document.getElementById('voice-label').textContent = 'Speak';
+  if (localStorage.getItem('carelog_voice_mode') === 'enabled') {
+    setTimeout(startWakeListener, 600);
+  }
+}
+
+// ── Caregiver voice input ─────────────────────────────────────────────────────
+let cgRecognition  = null;
+let isCgRecording  = false;
+let cgCommitted    = '';
+
+function toggleCgSpeak() {
+  if (isCgRecording) stopCgRecording();
+  else startCgRecording();
+}
+
+function startCgRecording() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Voice input requires Chrome or Edge.'); return; }
+  if (isRecording) stopRecording();
+
+  cgCommitted = document.getElementById('caregiver-note-input').value;
+  if (cgCommitted && !cgCommitted.endsWith(' ')) cgCommitted += ' ';
+
+  cgRecognition = new SR();
+  cgRecognition.continuous     = true;
+  cgRecognition.interimResults = true;
+  cgRecognition.lang           = 'en-US';
+
+  cgRecognition.onresult = e => {
+    let committed = cgCommitted;
+    let interim   = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) committed += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    cgCommitted = committed;
+    document.getElementById('caregiver-note-input').value = committed + interim;
+  };
+
+  cgRecognition.onend = () => {
+    if (isCgRecording) { try { cgRecognition.start(); } catch(e) {} }
+  };
+
+  cgRecognition.onerror = e => {
+    if (e.error !== 'no-speech') stopCgRecording();
+  };
+
+  isCgRecording = true;
+  try { cgRecognition.start(); } catch(e) { isCgRecording = false; return; }
+
+  const btn = document.getElementById('cg-voice-btn');
+  btn.classList.add('recording');
+  btn.querySelector('.cg-voice-icon').textContent  = '⏹';
+  btn.querySelector('.cg-voice-label').textContent = 'Stop';
+}
+
+function stopCgRecording() {
+  isCgRecording = false;
+  try { if (cgRecognition) cgRecognition.stop(); } catch(e) {}
+  cgRecognition = null;
+  const btn = document.getElementById('cg-voice-btn');
+  if (!btn) return;
+  btn.classList.remove('recording');
+  btn.querySelector('.cg-voice-icon').textContent  = '🎙';
+  btn.querySelector('.cg-voice-label').textContent = 'Speak';
+}
+
+function setVoiceMode(choice) {
+  localStorage.setItem('carelog_voice_mode', choice);
+  document.getElementById('voice-mode-modal').style.display = 'none';
+  if (choice === 'enabled') {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(s => { s.getTracks().forEach(t => t.stop()); startWakeListener(); })
+      .catch(() => {});
+  }
+}
+
+// ── Wake word ─────────────────────────────────────────────────────────────────
+let wakeRecognition = null;
+let wakeActive      = false;
+
+function startWakeListener() {
+  if (localStorage.getItem('carelog_voice_mode') !== 'enabled') return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR || isRecording || wakeActive || tcLive) return;
+
+  wakeRecognition = new SR();
+  wakeRecognition.continuous     = false;
+  wakeRecognition.interimResults = false;
+  wakeRecognition.lang           = 'en-US';
+
+  wakeRecognition.onresult = e => {
+    const text = e.results[0][0].transcript.toLowerCase().trim();
+    if (text.includes('take note')) {
+      wakeActive = false;
+      document.getElementById('voice-mode-indicator').style.display = 'none';
+      showSection('log');
+      window.startRecordingFresh();
+    }
+  };
+
+  wakeRecognition.onend = () => {
+    wakeActive = false;
+    document.getElementById('voice-mode-indicator').style.display = 'none';
+    if (!isRecording && localStorage.getItem('carelog_voice_mode') === 'enabled') {
+      setTimeout(startWakeListener, 400);
+    }
+  };
+
+  wakeRecognition.onerror = e => {
+    wakeActive = false;
+    document.getElementById('voice-mode-indicator').style.display = 'none';
+    if (!isRecording && localStorage.getItem('carelog_voice_mode') === 'enabled') {
+      setTimeout(startWakeListener, e.error === 'no-speech' ? 400 : 2000);
+    }
+  };
+
+  try {
+    wakeRecognition.start();
+    wakeActive = true;
+    document.getElementById('voice-mode-indicator').style.display = 'inline';
+  } catch(e) {}
+}
+
+function stopWakeListener() {
+  wakeActive = false;
+  document.getElementById('voice-mode-indicator').style.display = 'none';
+  if (wakeRecognition) {
+    wakeRecognition.onend  = null;
+    wakeRecognition.onerror = null;
+    try { wakeRecognition.stop(); } catch(e) {}
+  }
 }
 
 // ── Submit note ───────────────────────────────────────────────────────────────
@@ -1530,7 +2453,6 @@ async function submitNote() {
     selectedRating = null;
     document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('caregiver-note-input').value = '';
-    document.getElementById('caregiver-note-area').style.display = 'none';
     const btn = document.getElementById('submit-btn');
     btn.textContent = 'Check-in saved ✓';
     btn.disabled = true;
@@ -1577,15 +2499,19 @@ async function submitNote() {
       showEmergencyOverlay(d.extraction);
     }
 
+    lastSubmittedRating = selectedRating;
     renderExtractionResult(d.extraction, d.patterns, d.follow_up);
     loadCheckin();
     loadAlertBadge();
+    // Refresh background tabs so data is current when user switches
+    initCalendar();
+    loadPatterns();
+    loadAlerts();
     document.getElementById('note-input').value = '';
     updateCharCount();
     selectedRating = null;
     document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('caregiver-note-input').value = '';
-    document.getElementById('caregiver-note-area').style.display = 'none';
 
   } catch(e) {
     alert('Something went wrong. Please try again.');
@@ -1626,6 +2552,9 @@ function renderExtractionResult(extraction, patterns, followUp) {
     : '';
 
   box.style.display = 'block';
+  document.getElementById('ai-divider').style.display = 'block';
+  const vcBadge = document.getElementById('voice-confirmed-badge');
+  if (vcBadge) vcBadge.style.display = voiceProfile ? 'inline-flex' : 'none';
 }
 
 async function removeTag(category) {
@@ -1666,11 +2595,15 @@ function renderConcernBox(extraction, isLastEntry) {
     if (noted.length)    extras.push(`Noted: ${noted.map(([c])=>c).join(', ')}`);
     if (positives.length) extras.push(`Positive: ${positives.map(([c])=>c).join(', ')}`);
     const n = concerns.length;
+    const acknowledgment = !isLastEntry
+      ? `<p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5;font-style:italic;">That sounds like a hard observation to record. It's logged and saved.</p>`
+      : '';
     box.innerHTML = `
       <div style="border:1px solid var(--amber);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;">
         <div style="font-weight:700;color:var(--amber);margin-bottom:10px;">⚠ ${n} concern${n>1?'s':''} flagged</div>
-        <div style="margin-bottom:${extras.length?'8px':'12px'};">${rows}</div>
-        ${extras.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${extras.join(' · ')}</div>` : ''}
+        <div style="margin-bottom:${extras.length?'8px':'10px'};">${rows}</div>
+        ${extras.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${extras.join(' · ')}</div>` : ''}
+        ${acknowledgment}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${!isLastEntry ? `<button class="btn btn-primary btn-sm" onclick="confirmTags()">Looks right</button>` : ''}
           ${fixBtn}
@@ -1686,6 +2619,13 @@ function renderConcernBox(extraction, isLastEntry) {
         <span style="font-size:13px;color:var(--muted);">${parts.join(' · ')}</span>
         ${fixBtn}
       </div>`;
+  }
+
+  if (!isLastEntry && lastSubmittedRating !== null && lastSubmittedRating <= 2) {
+    const ratingNote = document.createElement('div');
+    ratingNote.style.cssText = 'margin-top:4px;padding:12px 14px;background:var(--noted-bg);border-left:3px solid var(--blue);border-radius:var(--radius);font-size:13px;color:var(--text);line-height:1.6;';
+    ratingNote.innerHTML = `You rated yourself ${lastSubmittedRating} today. That matters too. Resources are in the <button onclick="showSection('resources')" style="background:none;border:none;color:var(--blue);font-weight:600;cursor:pointer;padding:0;font-size:13px;text-decoration:underline;">Resources tab</button> whenever you need them.`;
+    box.appendChild(ratingNote);
   }
 }
 
@@ -2075,16 +3015,496 @@ function closeCheckin() {
   document.querySelectorAll('.checkin-btn').forEach(b => b.style.display = 'block');
 }
 
-// ── History ───────────────────────────────────────────────────────────────────
+// ── Calendar History ─────────────────────────────────────────────────────────
+const CAL_MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+let calYear       = new Date().getFullYear();
+let calMonth      = new Date().getMonth();
+let calFirstYear  = calYear;
+let calFirstMonth = calMonth;
+let calFirstDate  = null;   // "YYYY-MM-DD" of very first entry
+let calEntryDates = {};
+let calSelected   = new Set();
+
+async function initCalendar() {
+  const r = await fetch('/api/entries/dates');
+  const d = await r.json();
+  calEntryDates = {};
+  d.forEach(item => { calEntryDates[item.date] = item; });
+
+  if (d.length > 0) {
+    const first   = d[0].date;
+    calFirstDate  = first;
+    calFirstYear  = parseInt(first.slice(0, 4));
+    calFirstMonth = parseInt(first.slice(5, 7)) - 1;
+  }
+
+  const now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+
+  renderCalMonth();
+}
+
+function calJumpToStart() {
+  if (!calFirstDate) return;
+  calYear  = calFirstYear;
+  calMonth = calFirstMonth;
+  renderCalMonth();
+}
+
+function calJumpToToday() {
+  const now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalMonth();
+}
+
+function calShiftMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalMonth();
+}
+
+function calShiftYear(dir) {
+  calYear += dir;
+  // Clamp month if we've gone before the start or past current
+  const now = new Date();
+  if (calYear === calFirstYear && calMonth < calFirstMonth) calMonth = calFirstMonth;
+  if (calYear === now.getFullYear() && calMonth > now.getMonth()) calMonth = now.getMonth();
+  renderCalMonth();
+}
+
+function renderCalMonth() {
+  document.getElementById('cal-month-title').textContent =
+    `${CAL_MONTHS[calMonth]} ${calYear}`;
+
+  const now = new Date();
+  const atFirstMonth   = (calYear < calFirstYear) || (calYear === calFirstYear && calMonth <= calFirstMonth);
+  const atFirstYear    = calYear <= calFirstYear;
+  const atCurrentMonth = calYear === now.getFullYear() && calMonth >= now.getMonth();
+  const atCurrentYear  = calYear >= now.getFullYear();
+
+  document.getElementById('cal-prev-btn').disabled      = atFirstMonth;
+  document.getElementById('cal-prev-year-btn').disabled = atFirstYear;
+  document.getElementById('cal-next-btn').disabled      = atCurrentMonth;
+  document.getElementById('cal-next-year-btn').disabled = atCurrentYear;
+
+  const grid    = document.getElementById('cal-month-grid');
+  grid.innerHTML = '';
+  const today   = new Date();
+  const firstDay     = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth  = new Date(calYear, calMonth + 1, 0).getDate();
+  const prevDays     = new Date(calYear, calMonth, 0).getDate();
+
+  // Leading grey tiles from previous month
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const tile = document.createElement('div');
+    tile.className = 'cal-tile other-month';
+    tile.textContent = prevDays - i;
+    grid.appendChild(tile);
+  }
+
+  // Current month tiles
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const info    = calEntryDates[dateStr];
+    const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===day;
+    const isSel   = calSelected.has(dateStr);
+
+    const isDay1 = calFirstDate === dateStr;
+
+    const tile = document.createElement('div');
+    tile.className = ['cal-tile','in-month',
+      info ? 'has-entry' : '',
+      info?.has_emergency ? 'has-emergency' : '',
+      isToday ? 'is-today' : '',
+      isSel ? 'selected' : '',
+      isDay1 ? 'start-of-care' : ''
+    ].filter(Boolean).join(' ');
+
+    if (isDay1) {
+      const badge = document.createElement('span');
+      badge.className = 'cal-start-badge';
+      badge.textContent = 'Day 1';
+      tile.appendChild(badge);
+    }
+
+    const num = document.createElement('span');
+    num.className = 'cal-day-num';
+    num.textContent = day;
+    tile.appendChild(num);
+
+    if (info) {
+      // Primary: fill tile with most pressing alert color
+      if (info.has_emergency)      tile.classList.add('alert-emergency');
+      else if (info.has_pattern)   tile.classList.add('alert-pattern');
+
+      // Secondary: vertical bars for everything that isn't the primary fill
+      const vbars = document.createElement('div');
+      vbars.className = 'cal-vbars';
+
+      const addVBar = cls => {
+        const b = document.createElement('div'); b.className=`cal-vbar ${cls}`; vbars.appendChild(b);
+      };
+
+      if (info.has_emergency) {
+        // emergency fills tile → show secondary bars for pattern + translation
+        if (info.has_pattern)     addVBar('pattern');
+        if (info.has_translation) addVBar('translation');
+      } else if (info.has_pattern) {
+        // pattern fills tile → show secondary bar for translation
+        if (info.has_translation) addVBar('translation');
+      } else {
+        // no fill → vertical bars for all types present
+        addVBar('obs');
+        if (info.has_translation) addVBar('translation');
+      }
+
+      if (vbars.children.length) tile.appendChild(vbars);
+      tile.addEventListener('click', () => calToggleDay(dateStr));
+    }
+
+    grid.appendChild(tile);
+  }
+
+  // Trailing grey tiles from next month
+  const lastDay = new Date(calYear, calMonth, daysInMonth).getDay();
+  const trailing = lastDay < 6 ? 6 - lastDay : 0;
+  for (let i = 1; i <= trailing; i++) {
+    const tile = document.createElement('div');
+    tile.className = 'cal-tile other-month';
+    tile.textContent = i;
+    grid.appendChild(tile);
+  }
+
+  renderMonthSummary();
+}
+
+async function renderMonthSummary() {
+  const el = document.getElementById('cal-month-summary');
+  if (!el) return;
+
+  // Collect entries in the current displayed month
+  const prefix = `${calYear}-${String(calMonth+1).padStart(2,'0')}-`;
+  const monthEntries = Object.entries(calEntryDates)
+    .filter(([d]) => d.startsWith(prefix))
+    .map(([d, info]) => ({ date: d, ...info }));
+
+  if (monthEntries.length === 0) {
+    el.innerHTML = `<div class="cms-empty">No entries logged this month.</div>`;
+    return;
+  }
+
+  // Aggregate stats from calendar date metadata
+  let totalEntries = 0, emergencyDays = [], patternDays = [], translationDays = [];
+  for (const e of monthEntries) {
+    totalEntries += e.entry_count || 1;
+    if (e.has_emergency)   emergencyDays.push(e.date);
+    if (e.has_pattern)     patternDays.push(e.date);
+    if (e.has_translation) translationDays.push(e.date);
+  }
+
+  // Fetch real alerts for this month
+  const monthPrefix = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  let monthAlerts = [];
+  try {
+    const ar = await fetch(`/api/alerts?date=${monthPrefix}`);
+    const ad = await ar.json();
+    monthAlerts = ad.alerts || [];
+  } catch(e) {}
+
+  // Days into care
+  let careDaysLine = '';
+  if (calFirstDate) {
+    const first = new Date(calFirstDate + 'T00:00:00');
+    const monthEnd = new Date(calYear, calMonth + 1, 0);
+    const ref = monthEnd < new Date() ? monthEnd : new Date();
+    const daysSince = Math.round((ref - first) / 86400000);
+    if (daysSince >= 0) careDaysLine = `Day ${daysSince + 1} of care`;
+  }
+
+  const fmtDay = ds => {
+    const [, , d] = ds.split('-');
+    return `${CAL_MONTHS[calMonth].slice(0,3)} ${parseInt(d)}`;
+  };
+
+  const BADGE_LABELS = {
+    mental:           'MENTAL HEALTH CRISIS',
+    physical:         'MEDICAL EMERGENCY',
+    caregiver_safety: 'CAREGIVER SAFETY',
+    third_party:      'VIOLENCE — THIRD PARTY',
+    emergency:        'EMERGENCY',
+    incident:         'INCIDENT',
+    pattern:          'PATTERN'
+  };
+
+  const alertTypeClass = t => {
+    if (['mental','physical','caregiver_safety','third_party','emergency','incident'].includes(t)) return 'emergency';
+    if (t === 'pattern') return 'pattern';
+    return 'observation';
+  };
+
+  let html = `<div class="cms-header">Month at a Glance — ${CAL_MONTHS[calMonth]} ${calYear}</div>`;
+
+  html += `<div class="cms-stats">`;
+  html += `<div class="cms-stat muted"><div class="cms-stat-val">${monthEntries.length}</div><div class="cms-stat-label">Days Logged</div></div>`;
+  html += `<div class="cms-stat muted"><div class="cms-stat-val">${totalEntries}</div><div class="cms-stat-label">Total Entries</div></div>`;
+  const patternAlertCount = monthAlerts.filter(a => a.alert_type === 'pattern').length;
+  const emergencyAlertCount = monthAlerts.filter(a => a.alert_type !== 'pattern').length;
+
+  if (emergencyDays.length > 0)
+    html += `<div class="cms-stat clickable" data-dates='${JSON.stringify(emergencyDays)}'><div class="cms-stat-val red">${emergencyAlertCount || emergencyDays.length}</div><div class="cms-stat-label">Emergency Alerts</div></div>`;
+  if (patternDays.length > 0)
+    html += `<div class="cms-stat clickable" data-dates='${JSON.stringify(patternDays)}'><div class="cms-stat-val amber">${patternAlertCount || patternDays.length}</div><div class="cms-stat-label">Pattern Alerts</div></div>`;
+  if (translationDays.length > 0)
+    html += `<div class="cms-stat clickable" data-dates='${JSON.stringify(translationDays)}'><div class="cms-stat-val blue">${translationDays.length}</div><div class="cms-stat-label">Translations</div></div>`;
+  html += `</div>`;
+
+  if (monthAlerts.length > 0) {
+    html += `<div class="cms-alerts-label">Alerts this month — tap a row to view entries</div>`;
+    html += `<div class="cms-events">`;
+    monthAlerts.forEach(a => {
+      const dateStr = (a.entry_date || a.created_at || '').slice(0, 10);
+      const cls     = alertTypeClass(a.alert_type);
+      const badge   = BADGE_LABELS[a.alert_type] || a.alert_type.toUpperCase();
+      const msg     = escHtml(a.alert_message || '');
+      const dayLabel = dateStr ? fmtDay(dateStr) : '';
+      html += `<div class="cms-event ${cls}" data-date="${dateStr}">
+        <div class="cms-event-badge-row">
+          <span class="alert-type-badge badge-${a.alert_type}">${badge}</span>
+          <span class="cms-event-date">${dayLabel}</span>
+        </div>
+        <div class="cms-event-desc">${msg}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  } else if (emergencyDays.length || patternDays.length) {
+    html += `<div class="cms-empty" style="font-size:12px;">Alert detail not available — tap a day tile to view entries.</div>`;
+  }
+
+  if (translationDays.length > 0) {
+    html += `<div class="cms-empty" style="font-size:12px;margin-top:6px;">Translation sessions on ${translationDays.map(fmtDay).join(', ')} — tap the blue tile to review.</div>`;
+  }
+
+  if (careDaysLine) {
+    html += `<div class="cms-caredays">${careDaysLine} as of end of month</div>`;
+  }
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('.cms-stat.clickable').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const dates = JSON.parse(tile.dataset.dates);
+      calSelectDates(dates);
+    });
+  });
+
+  el.querySelectorAll('.cms-event').forEach(ev => {
+    ev.addEventListener('click', () => {
+      const d = ev.dataset.date;
+      if (d) calSelectDate(d);
+    });
+  });
+}
+
+function calSelectDates(dates) {
+  calSelected.clear();
+  dates.forEach(d => calSelected.add(d));
+  renderCalMonth();
+  updateCalSelectionBar();
+  if (calSelected.size > 0) {
+    loadCalEntries();
+    setTimeout(() => document.getElementById('cal-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+  }
+}
+
+function calSelectDate(dateStr) {
+  // Jump calendar to the month of the date if needed, then select it
+  const [y, m] = dateStr.split('-').map(Number);
+  if (calYear !== y || calMonth !== m - 1) {
+    calYear  = y;
+    calMonth = m - 1;
+    renderCalMonth();
+  }
+  if (!calSelected.has(dateStr)) {
+    calSelected.add(dateStr);
+    renderCalMonth();
+    updateCalSelectionBar();
+    loadCalEntries();
+  } else {
+    // scroll to panel
+    document.getElementById('cal-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function calToggleDay(dateStr) {
+  if (calSelected.has(dateStr)) {
+    calSelected.delete(dateStr);
+  } else {
+    calSelected.add(dateStr);
+  }
+  renderCalMonth();
+  updateCalSelectionBar();
+  if (calSelected.size > 0) loadCalEntries();
+  else document.getElementById('cal-panel').innerHTML = '';
+}
+
+function calClearSelection() {
+  calSelected.clear();
+  renderCalMonth();
+  document.getElementById('cal-selection-bar').style.display = 'none';
+  document.getElementById('cal-panel').innerHTML = '';
+}
+
+async function viewAlertInHistory(dateStr) {
+  if (!dateStr) return;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-history').classList.add('active');
+  const idx = NAV_ORDER.indexOf('history');
+  document.querySelectorAll('nav button')[idx]?.classList.add('active');
+  document.getElementById('print-btn').style.display = 'none';
+  await initCalendar();
+  calSelectDate(dateStr);
+  setTimeout(() => document.getElementById('cal-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+}
+
+async function viewDatesInHistory(dates) {
+  if (!dates || !dates.length) return;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-history').classList.add('active');
+  const idx = NAV_ORDER.indexOf('history');
+  document.querySelectorAll('nav button')[idx]?.classList.add('active');
+  document.getElementById('print-btn').style.display = 'none';
+  await initCalendar();
+  calSelectDates(dates);
+}
+
+function updateCalSelectionBar() {
+  const bar = document.getElementById('cal-selection-bar');
+  if (calSelected.size === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const sorted = [...calSelected].sort();
+  const labels = sorted.map(ds => {
+    const d = new Date(ds + 'T12:00:00');
+    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+  });
+  const label = calSelected.size === 1
+    ? labels[0]
+    : `${labels[0]} + ${calSelected.size - 1} more day${calSelected.size > 2 ? 's' : ''}`;
+  document.getElementById('cal-selection-label').textContent = label;
+}
+
+async function loadCalEntries() {
+  const dates = [...calSelected].sort().join(',');
+  const r = await fetch(`/api/entries?dates=${dates}`);
+  const d = await r.json();
+  renderCalPanel(d.entries);
+}
+
+function renderCalPanel(entries) {
+  const panel = document.getElementById('cal-panel');
+  panel.innerHTML = '';
+  if (!entries.length) {
+    panel.innerHTML = '<div class="cal-empty-msg">No entries for the selected date(s).</div>';
+    return;
+  }
+  const sectionHdr = document.createElement('div');
+  sectionHdr.className = 'cal-panel-section-hdr';
+  sectionHdr.textContent = 'Logged Entries';
+  panel.appendChild(sectionHdr);
+
+  let lastDate = null;
+  entries.forEach(entry => {
+    const entryDate = entry.created_at.slice(0, 10);
+    if (entryDate !== lastDate) {
+      const hdr = document.createElement('div');
+      hdr.className = 'cal-panel-date-hdr';
+      const d = new Date(entryDate + 'T12:00:00');
+      hdr.textContent = d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+      panel.appendChild(hdr);
+      lastDate = entryDate;
+    }
+
+    const tags          = entry.corrected_tags || entry.tags;
+    const concerns      = Object.values(tags).filter(t => t.sentiment === 'concerning').length;
+    const positives     = Object.values(tags).filter(t => t.sentiment === 'positive').length;
+    const isTranslation = entry.note_type === 'translation';
+    const customTopics  = entry.custom_tags || [];
+
+    let borderClass = '';
+    if (entry.is_emergency)   borderClass = 'emergency';
+    else if (isTranslation)   borderClass = 'translation-session';
+    else if (concerns > 0)    borderClass = 'has-concern';
+    else if (positives > 0 && concerns === 0) borderClass = 'all-positive';
+
+    const tagHtml    = Object.entries(tags).map(([cat, data]) =>
+      `<span class="tag tag-${data.sentiment}" style="font-size:12px;padding:4px 10px;">${TAG_ICONS[cat]||'•'} ${cat}</span>`
+    ).join('');
+    const customHtml = customTopics.map(t =>
+      `<span class="tag tag-custom" style="font-size:12px;padding:4px 10px;">🏷 ${escHtml(t)}</span>`
+    ).join('');
+
+    let previewHtml, fullHtml;
+    if (isTranslation) {
+      const parts       = entry.raw_note.split('\n\n');
+      const headerLine  = parts[0] || '';
+      const body        = parts.slice(1).join('\n\n').trim();
+      const lines       = body.split('\n').filter(Boolean);
+      const sessionLabel = headerLine.replace(/^\[|\]$/g, '');
+      previewHtml = `<div class="tc-history-label">${escHtml(sessionLabel)} · ${lines.length} exchange${lines.length!==1?'s':''}</div>`;
+      fullHtml = `<div class="tc-history-label">${escHtml(sessionLabel)}</div>
+        <div class="tc-history-transcript">${lines.map(line => {
+          const ci = line.indexOf(':');
+          if (ci === -1) return `<div class="tc-hist-line">${escHtml(line)}</div>`;
+          const speaker    = line.slice(0, ci).trim();
+          const rest       = line.slice(ci + 1).trim();
+          const pi         = rest.lastIndexOf('(');
+          const original   = pi > -1 ? rest.slice(pi + 1, -1) : '';
+          const translated = pi > -1 ? rest.slice(0, pi).trim() : rest;
+          return `<div class="tc-hist-line">
+            <span class="tc-hist-speaker">${escHtml(speaker)}</span>
+            <span class="tc-hist-translated">${escHtml(translated)}</span>
+            ${original ? `<span class="tc-hist-original">${escHtml(original)}</span>` : ''}
+          </div>`;
+        }).join('')}</div>`;
+    } else {
+      previewHtml = `<div class="entry-preview">${escHtml(entry.raw_note.slice(0,160))}${entry.raw_note.length>160?'…':''}</div>`;
+      fullHtml    = `<div class="entry-preview">${escHtml(entry.raw_note)}</div>`;
+    }
+
+    const timeStr = new Date(entry.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const card = document.createElement('div');
+    card.className = `entry-card ${borderClass}`;
+    card.innerHTML = `
+      <div class="entry-meta">
+        <span>${timeStr}</span>
+        ${isTranslation ? '<span class="entry-translate-badge">🌐 Translation</span>' : ''}
+        ${entry.is_emergency ? '<span class="emerg-flag">ALERT LOGGED</span>' : ''}
+        ${entry.corrected_tags ? '<span style="color:var(--blue);font-size:11px;font-weight:600;">Corrected</span>' : ''}
+      </div>
+      ${fullHtml}
+      <div class="entry-tags">${tagHtml}${customHtml}</div>`;
+
+    panel.appendChild(card);
+  });
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Legacy list history (kept for internal use) ───────────────────────────────
 async function loadHistory(append) {
   if (!append) historyOffset = 0;
 
-  const r = await fetch(`/api/entries?limit=10&offset=${historyOffset}`);
+  const r = await fetch(`/api/entries?limit=30&offset=${historyOffset}`);
   const d = await r.json();
 
   const list  = document.getElementById('history-list');
   const count = document.getElementById('history-count');
-  count.textContent = `${d.total} total entries`;
+  const entryWord = d.total === 1 ? 'entry' : 'entries';
+  count.textContent = `${d.total} ${entryWord} on record`;
 
   if (!append) list.innerHTML = '';
 
@@ -2094,43 +3514,93 @@ async function loadHistory(append) {
     return;
   }
 
+  let lastDateKey = null;
+
   d.entries.forEach(entry => {
-    const tags     = entry.corrected_tags || entry.tags;
-    const concerns = Object.values(tags).filter(t => t.sentiment === 'concerning').length;
-    const positives = Object.values(tags).filter(t => t.sentiment === 'positive').length;
+    const tags        = entry.corrected_tags || entry.tags;
+    const concerns    = Object.values(tags).filter(t => t.sentiment === 'concerning').length;
+    const positives   = Object.values(tags).filter(t => t.sentiment === 'positive').length;
     const customTopics = entry.custom_tags || [];
+    const isTranslation = entry.note_type === 'translation';
+
+    // Date group header
+    const dateKey = new Date(entry.created_at).toDateString();
+    if (dateKey !== lastDateKey) {
+      const hdr = document.createElement('div');
+      hdr.className = 'history-date-hdr';
+      hdr.textContent = formatDateDay(entry.created_at);
+      list.appendChild(hdr);
+      lastDateKey = dateKey;
+    }
 
     let borderClass = '';
-    if (entry.is_emergency)    borderClass = 'emergency';
-    else if (concerns > 0)     borderClass = 'has-concern';
+    if (entry.is_emergency)   borderClass = 'emergency';
+    else if (isTranslation)   borderClass = 'translation-session';
+    else if (concerns > 0)    borderClass = 'has-concern';
     else if (positives > 0 && concerns === 0) borderClass = 'all-positive';
 
     const tagHtml = Object.entries(tags).map(([cat, data]) =>
       `<span class="tag tag-${data.sentiment}" style="font-size:12px;padding:4px 10px;">${TAG_ICONS[cat]||'•'} ${cat}</span>`
     ).join('');
-
     const customHtml = customTopics.map(t =>
       `<span class="tag tag-custom" style="font-size:12px;padding:4px 10px;">🏷 ${escHtml(t)}</span>`
     ).join('');
+
+    // Build preview and full content differently for translation vs observation
+    let previewHtml, fullHtml;
+    if (isTranslation) {
+      const parts     = entry.raw_note.split('\n\n');
+      const headerLine = parts[0] || '';
+      const body      = (parts.slice(1).join('\n\n')).trim();
+      const lines     = body.split('\n').filter(Boolean);
+      const lineCount = lines.length;
+      // Header: strip brackets
+      const sessionLabel = headerLine.replace(/^\[|\]$/g, '');
+      previewHtml = `<div class="tc-history-label">${escHtml(sessionLabel)} · ${lineCount} exchange${lineCount!==1?'s':''}</div>`;
+      fullHtml = `<div class="tc-history-label">${escHtml(sessionLabel)}</div>
+        <div class="tc-history-transcript">${lines.map(line => {
+          const colonIdx = line.indexOf(':');
+          if (colonIdx === -1) return `<div class="tc-hist-line">${escHtml(line)}</div>`;
+          const speaker = line.slice(0, colonIdx).trim();
+          const rest    = line.slice(colonIdx + 1).trim();
+          const parenIdx = rest.lastIndexOf('(');
+          const original  = parenIdx > -1 ? rest.slice(parenIdx + 1, -1) : '';
+          const translated = parenIdx > -1 ? rest.slice(0, parenIdx).trim() : rest;
+          return `<div class="tc-hist-line">
+            <span class="tc-hist-speaker">${escHtml(speaker)}</span>
+            <span class="tc-hist-translated">${escHtml(translated)}</span>
+            ${original ? `<span class="tc-hist-original">${escHtml(original)}</span>` : ''}
+          </div>`;
+        }).join('')}</div>`;
+    } else {
+      previewHtml = `<div class="entry-preview">${escHtml(entry.raw_note.slice(0,160))}${entry.raw_note.length>160?'…':''}</div>`;
+      fullHtml    = `<div class="entry-full">${escHtml(entry.raw_note)}</div>`;
+    }
+
+    const timeStr = new Date(entry.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 
     const card = document.createElement('div');
     card.className = `entry-card ${borderClass}`;
     card.innerHTML = `
       <div class="entry-meta">
-        <span>${formatDate(entry.created_at)}</span>
+        <span>${timeStr}</span>
+        ${isTranslation ? '<span class="entry-translate-badge">🌐 Translation</span>' : ''}
         ${entry.is_emergency ? '<span class="emerg-flag">ALERT LOGGED</span>' : ''}
         ${entry.corrected_tags ? '<span style="color:var(--blue);font-size:11px;font-weight:600;">Corrected</span>' : ''}
       </div>
-      <div class="entry-preview">${escHtml(entry.raw_note.slice(0, 160))}${entry.raw_note.length > 160 ? '…' : ''}</div>
-      <div class="entry-full">${escHtml(entry.raw_note)}</div>
+      ${previewHtml}
+      <div class="entry-expanded" style="display:none;">${fullHtml}</div>
       <div class="entry-tags">${tagHtml}${customHtml}</div>`;
 
-    card.querySelector('.entry-preview').addEventListener('click', () => {
-      const full    = card.querySelector('.entry-full');
+    const toggle = isTranslation
+      ? card.querySelector('.tc-history-label')
+      : card.querySelector('.entry-preview');
+    if (toggle) toggle.addEventListener('click', () => {
+      const exp     = card.querySelector('.entry-expanded');
       const preview = card.querySelector('.entry-preview');
-      const isOpen  = full.style.display === 'block';
-      full.style.display    = isOpen ? 'none' : 'block';
-      preview.style.display = isOpen ? 'block' : 'none';
+      const isOpen  = exp.style.display === 'block';
+      exp.style.display = isOpen ? 'none' : 'block';
+      if (preview) preview.style.display = isOpen ? 'block' : 'none';
     });
 
     list.appendChild(card);
@@ -2138,6 +3608,9 @@ async function loadHistory(append) {
 
   historyOffset += d.entries.length;
   document.getElementById('history-load-more').style.display = historyOffset < d.total ? 'block' : 'none';
+
+  // On first load, scroll to bottom so most recent entry is visible
+  if (!append) list.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
 // ── Patterns ──────────────────────────────────────────────────────────────────
@@ -2210,12 +3683,17 @@ async function loadPatterns() {
   d.patterns.forEach(p => {
     const el = document.createElement('div');
     el.className = 'pattern-card';
+    const datesJson = JSON.stringify(p.dates || []);
+    const historyBtn = (p.dates && p.dates.length)
+      ? `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;margin-top:8px;" onclick='viewDatesInHistory(${datesJson})'>View in History (${p.dates.length} day${p.dates.length !== 1 ? 's' : ''})</button>`
+      : '';
     el.innerHTML = `
       <div class="pattern-icon">${TAG_ICONS[p.category] || '⚠'}</div>
       <div class="pattern-body">
         <h3>${p.label}</h3>
         <p>${p.message}</p>
-        <p style="font-size:13px;color:var(--muted);margin-top:6px;">Consider mentioning this at the next clinical visit or calling ${(currentPatient && currentPatient.is_veteran) ? 'the VA Caregiver Support Line: <strong>1-855-260-3274</strong>' : 'a caregiver support line: <strong>1-855-227-3640</strong> (ARCH National Respite Network)'}</p>
+        <p class="muted-note" style="margin-top:6px;">Consider mentioning this at the next clinical visit or calling ${(currentPatient && currentPatient.is_veteran) ? 'the VA Caregiver Support Line: <strong>1-855-260-3274</strong>' : 'a caregiver support line: <strong>1-855-227-3640</strong> (ARCH National Respite Network)'}</p>
+        ${historyBtn}
       </div>
       <div class="pattern-count">${p.count}</div>`;
     patientBody.appendChild(el);
@@ -2254,7 +3732,7 @@ async function loadPatterns() {
           ${trendText ? `&nbsp;·&nbsp;<span style="color:${trendColor};font-weight:600;">${trendText}</span>` : ''}
           &nbsp;·&nbsp;${wb.count} day${wb.count !== 1 ? 's' : ''} rated
         </p>
-        <div style="margin-top:8px;">${dots}</div>
+        <div class="wb-dots">${dots}</div>
       </div>`;
     cgBody.appendChild(trendEl);
 
@@ -2268,8 +3746,8 @@ async function loadPatterns() {
       el.innerHTML = `
         <div class="pattern-icon" style="font-size:18px;color:${noteColor};font-weight:700;">${r.rating}</div>
         <div class="pattern-body">
-          <h3 style="font-size:13px;color:var(--muted);font-weight:600;">${r.date} &nbsp;·&nbsp; ${noteLabel}</h3>
-          <p style="margin-top:4px;">${escHtml(r.notes)}</p>
+          <h3 class="wb-entry-date">${r.date} &nbsp;·&nbsp; ${noteLabel}</h3>
+          <p class="wb-entry-note">${escHtml(r.notes)}</p>
         </div>`;
       cgBody.appendChild(el);
     });
@@ -2294,7 +3772,7 @@ async function generateSummary() {
   const days = document.getElementById('days-select').value;
   const out  = document.getElementById('summary-output');
   const meta = document.getElementById('summary-meta');
-  out.innerHTML = '<p style="color:var(--muted);padding:20px;">Generating…</p>';
+  out.innerHTML = '<p class="muted-note" style="padding:20px;">Generating…</p>';
   out.style.display = 'block';
 
   const r = await fetch('/api/summary', {
@@ -2303,7 +3781,7 @@ async function generateSummary() {
     body: JSON.stringify({days: parseInt(days)})
   });
   const d = await r.json();
-  if (!d.patient) { out.innerHTML = '<p style="padding:20px;color:var(--muted);">No entries found for this period.</p>'; return; }
+  if (!d.patient) { out.innerHTML = '<p class="muted-note" style="padding:20px;">No entries found for this period.</p>'; return; }
 
   const p = d.patient;
   p.name = p.name.replace(/\b\w/g, c => c.toUpperCase());
@@ -2318,7 +3796,7 @@ async function generateSummary() {
   <div class="sum-header">
     <h3>Caregiver Observation Summary</h3>
     <p>${escHtml(p.name)}${p.is_veteran ? ' · Veteran' : ''} &nbsp;|&nbsp; ${escHtml(period.start)} through ${escHtml(period.end)} (${period.days} days) &nbsp;|&nbsp; ${d.total_entries} entries · ${d.emergency_count} flag${d.emergency_count !== 1 ? 's' : ''}</p>
-    ${cgLine ? `<p style="font-size:12px;color:var(--muted);margin-top:4px;font-family:monospace;">${cgLine}</p>` : ''}
+    ${cgLine ? `<p class="sum-cg-line">${cgLine}</p>` : ''}
   </div>`;
 
   // Medications
@@ -2332,7 +3810,7 @@ async function generateSummary() {
       return `<span class="sum-med-pill">${label}</span>`;
     }).join('');
   } else {
-    html += '<p style="color:var(--muted);font-size:13px;">No medications on file.</p>';
+    html += '<p class="muted-note">No medications on file.</p>';
   }
   html += '</div>';
 
@@ -2347,7 +3825,7 @@ async function generateSummary() {
       </div>`
     ).join('');
   } else {
-    html += '<p style="color:var(--muted);font-size:13px;">No recurring concerns flagged during this period.</p>';
+    html += '<p class="muted-note">No recurring concerns flagged during this period.</p>';
   }
   html += '</div>';
 
@@ -2362,7 +3840,7 @@ async function generateSummary() {
       </div>`
     ).join('');
   } else {
-    html += '<p style="color:var(--muted);font-size:13px;">No specific positive observations recorded.</p>';
+    html += '<p class="muted-note">No specific positive observations recorded.</p>';
   }
   html += '</div>';
 
@@ -2374,7 +3852,7 @@ async function generateSummary() {
       const label = FLAG_BADGE[f.type] || f.type.toUpperCase();
       return `<div class="sum-flag-row">
         <span class="sum-flag-date">${escHtml(f.date)}</span>
-        <span style="background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;">${label}</span>
+        <span class="flag-badge" style="background:${color};">${label}</span>
         <span>${escHtml(f.message)}</span>
       </div>`;
     }).join('');
@@ -2394,10 +3872,10 @@ async function generateSummary() {
   if (d.follow_ups && d.follow_ups.length) {
     html += `<div class="sum-section">
       <h4 style="display:flex;align-items:center;gap:8px;">
-        <span style="background:var(--navy);color:white;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;letter-spacing:0.4px;">BRING TO NEXT VISIT</span>
+        <span class="sum-visit-badge">BRING TO NEXT VISIT</span>
         Follow-Up Reminders
       </h4>
-      <p style="font-size:13px;color:var(--muted);margin:-4px 0 12px;">Based on what was logged, these are topics worth raising with a provider or care coordinator.</p>`;
+      <p class="sum-followup-desc">Based on what was logged, these are topics worth raising with a provider or care coordinator.</p>`;
     html += d.follow_ups.map(item =>
       `<div class="sum-followup-item">
         <span class="sum-followup-bullet">›</span>
@@ -2429,6 +3907,141 @@ function printSummary() {
   const out = document.getElementById('summary-output');
   if (!out || !out.innerHTML) { alert('Generate a summary first.'); return; }
   window.print();
+}
+
+// ── Patient Profile ───────────────────────────────────────────────────────────
+async function loadProfileTab() {
+  const el = document.getElementById('profile-content');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+
+  const [pr, cr] = await Promise.all([fetch('/api/patient'), fetch('/api/caregiver')]);
+  const pd = await pr.json();
+  const cd = await cr.json();
+  const p  = pd.patient;
+  if (!p) {
+    el.innerHTML = '<div class="empty-state"><p>No patient set up yet.</p><p>Add a patient in the Log Today tab to get started.</p></div>';
+    return;
+  }
+
+  const name       = p.name ? p.name.charAt(0).toUpperCase() + p.name.slice(1) : 'Patient';
+  const isVet      = p.is_veteran;
+  const lang       = p.patient_language || null;
+  const langLabel  = lang ? (new Intl.DisplayNames(['en'], {type:'language'})).of(lang) : null;
+  const local      = p.local_crisis_number;
+  const conditions = p.conditions || '';
+
+  const startDate = p.first_entry
+    ? new Date(p.first_entry + 'T12:00:00').toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})
+    : 'No entries yet';
+
+  const lastDate = p.last_entry
+    ? new Date(p.last_entry + 'T12:00:00').toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})
+    : '—';
+
+  const cgName = cd.caregiver?.name
+    ? cd.caregiver.name.charAt(0).toUpperCase() + cd.caregiver.name.slice(1) : '—';
+  const cgRel  = cd.caregiver?.relationship || '';
+
+  const ac  = p.alert_counts || {};
+  const mhN = (ac.mental || 0) + (ac.caregiver_safety || 0);
+  const emN = (ac.physical || 0) + (ac.third_party || 0) + (ac.incident || 0);
+  const ptN = ac.pattern || 0;
+
+  const medRows = (p.active_medications || []).map(m => `
+    <div class="profile-med-row">
+      <div>
+        <div class="profile-med-name">${escHtml(m.name)} <span style="font-weight:400;color:var(--text);">${escHtml(m.dosage)}</span></div>
+        <div class="profile-med-detail">${escHtml(m.frequency)}${m.scheduled_time ? ' · ' + escHtml(m.scheduled_time) : ''}</div>
+        ${m.notes ? `<div class="profile-med-note">${escHtml(m.notes)}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-name">
+        ${escHtml(name)}
+        ${isVet ? '<span class="profile-veteran-badge">🎖 VETERAN</span>' : ''}
+      </div>
+      <div class="profile-meta">
+        <strong>Under care since</strong> ${startDate}${p.days_in_care ? ' &nbsp;·&nbsp; Day ' + p.days_in_care : ''}<br>
+        <strong>Caregiver</strong> ${escHtml(cgName)}${cgRel ? ' &nbsp;·&nbsp; ' + escHtml(cgRel) : ''}<br>
+        ${langLabel ? `<strong>Primary language</strong> ${escHtml(langLabel)}<br>` : ''}
+        <strong>Last logged</strong> ${lastDate}
+      </div>
+    </div>
+
+    <div class="profile-stats">
+      <div class="profile-stat">
+        <div class="profile-stat-val">${p.days_in_care || 0}</div>
+        <div class="profile-stat-label">Days in Care</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-val">${p.total_entries || 0}</div>
+        <div class="profile-stat-label">Total Entries</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-val ${mhN > 0 ? 'red' : ''}">${mhN}</div>
+        <div class="profile-stat-label">MH Events</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-val ${ptN > 0 ? 'amber' : ''}">${ptN}</div>
+        <div class="profile-stat-label">Patterns</div>
+      </div>
+    </div>
+
+    ${p.active_medications && p.active_medications.length > 0 ? `
+    <div class="profile-card">
+      <div class="profile-card-title">Active Medications (${p.active_medications.length})</div>
+      ${medRows}
+    </div>` : ''}
+
+    <div class="profile-card">
+      <div class="profile-card-title">Conditions &amp; Background</div>
+      <textarea id="profile-conditions" class="profile-conditions-area"
+        placeholder="Known diagnoses, conditions, relevant history (e.g. PTSD, chronic back pain, TBI)…">${escHtml(conditions)}</textarea>
+      <button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="saveProfileConditions()">Save Notes</button>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-card-title">Emergency Resources</div>
+      ${local ? `<div class="profile-crisis-row"><span class="profile-crisis-label">Local Crisis Line</span><span class="profile-crisis-num">${escHtml(local)}</span></div>` : ''}
+      ${isVet ? `
+      <div class="profile-crisis-row"><span class="profile-crisis-label">Veterans Crisis Line</span><span class="profile-crisis-num">988 then Press 1</span></div>
+      <div class="profile-crisis-row"><span class="profile-crisis-label">VA Caregiver Support</span><span class="profile-crisis-num">1-855-260-3274</span></div>
+      ` : `
+      <div class="profile-crisis-row"><span class="profile-crisis-label">Crisis Line</span><span class="profile-crisis-num">988</span></div>
+      <div class="profile-crisis-row"><span class="profile-crisis-label">ARCH Respite Network</span><span class="profile-crisis-num">1-855-227-3640</span></div>
+      `}
+      <div class="profile-crisis-row"><span class="profile-crisis-label">Emergency</span><span class="profile-crisis-num">911</span></div>
+    </div>
+
+    <div style="text-align:center;margin-top:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="openPatientSetup()" style="font-size:12px;">Edit Patient Setup</button>
+    </div>`;
+}
+
+async function saveProfileConditions() {
+  const text = (document.getElementById('profile-conditions')?.value || '').trim();
+  const pr   = await fetch('/api/patient');
+  const pd   = await pr.json();
+  const p    = pd.patient;
+  if (!p) return;
+  await fetch('/api/patient', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      name:                p.name,
+      is_veteran:          p.is_veteran,
+      local_crisis_number: p.local_crisis_number,
+      patient_language:    p.patient_language,
+      conditions:          text
+    })
+  });
+  const btn = event.target;
+  btn.textContent = 'Saved ✓';
+  btn.style.background = 'var(--green)';
+  setTimeout(() => { btn.textContent = 'Save Notes'; btn.style.background = ''; }, 2000);
 }
 
 // ── Resources ─────────────────────────────────────────────────────────────────
@@ -2734,6 +4347,7 @@ async function loadAlerts() {
       pattern:         'PATTERN'
     };
     const badgeLabel = BADGE_LABELS[a.alert_type] || a.alert_type.toUpperCase();
+    const alertDateStr = (a.entry_date || a.created_at || '').slice(0, 10);
     el.innerHTML = `
       <div>
         <span class="alert-type-badge badge-${a.alert_type}">${badgeLabel}</span>
@@ -2746,8 +4360,11 @@ async function loadAlerts() {
         </div>
         <div class="lock-explain" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <span>🔒 Locked · Deletion requires multi-party agreement</span>
-          <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;border-color:var(--muted);color:var(--muted);"
-            onclick="openDeletionModal(${a.id})">Request Deletion</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${alertDateStr ? `<button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;" onclick="viewAlertInHistory('${alertDateStr}')">View in History</button>` : ''}
+            <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px;border-color:var(--muted);color:var(--muted);"
+              onclick="openDeletionModal(${a.id})">Request Deletion</button>
+          </div>
         </div>
       </div>`;
     list.appendChild(el);
@@ -2762,7 +4379,8 @@ async function loadAlertBadge() {
     const d = await r.json();
     const badge = document.getElementById('alert-badge');
     const tab   = document.getElementById('alerts-tab');
-    if (d.total > 0) {
+    const seen  = parseInt(localStorage.getItem('alerts_seen_count') || '0');
+    if (d.total > 0 && d.total > seen) {
       badge.textContent = d.total;
       badge.style.display = 'inline-block';
       tab.innerHTML = `Alerts <span class="badge">${d.total}</span>`;
@@ -2825,7 +4443,7 @@ async function seedData() {
   btn.textContent = d.message || 'Done';
   loadCheckin();
   loadAlertBadge();
-  setTimeout(() => { btn.textContent = 'Load sample data (14 days)'; btn.disabled = false; }, 2000);
+  setTimeout(() => { btn.textContent = 'Load sample data (120 days)'; btn.disabled = false; }, 2000);
 }
 
 // ── Deletion request UI ───────────────────────────────────────────────────────
@@ -2928,8 +4546,276 @@ function formatDate(str) {
   return isNaN(d) ? str : d.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
 }
 
+function formatDateDay(str) {
+  if (!str) return '';
+  const d = new Date(str);
+  if (isNaN(d)) return str;
+  const today = new Date();
+  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+  const isSameDay = (a, b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  if (isSameDay(d, today))     return 'Today';
+  if (isSameDay(d, yesterday)) return 'Yesterday';
+  return d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+}
+
 function escHtml(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Two-Way Translation ──────────────────────────────────────────────────────
+
+const SPEECH_LANG_MAP = {
+  af:'af-ZA', am:'am-ET', ar:'ar-SA', bn:'bn-IN', bg:'bg-BG', ca:'ca-ES',
+  zh:'zh-CN', 'zh-TW':'zh-TW', hr:'hr-HR', cs:'cs-CZ', da:'da-DK', nl:'nl-NL',
+  et:'et-EE', tl:'fil-PH', fi:'fi-FI', fr:'fr-FR', de:'de-DE', el:'el-GR',
+  gu:'gu-IN', he:'he-IL', hi:'hi-IN', hu:'hu-HU', id:'id-ID', it:'it-IT',
+  ja:'ja-JP', kn:'kn-IN', km:'km-KH', ko:'ko-KR', lo:'lo-LA', lv:'lv-LV',
+  lt:'lt-LT', ms:'ms-MY', ml:'ml-IN', mr:'mr-IN', ne:'ne-NP', no:'no-NO',
+  fa:'fa-IR', pl:'pl-PL', pt:'pt-PT', pa:'pa-IN', ro:'ro-RO', ru:'ru-RU',
+  sr:'sr-RS', si:'si-LK', sk:'sk-SK', es:'es-ES', sw:'sw-KE', sv:'sv-SE',
+  ta:'ta-IN', te:'te-IN', th:'th-TH', tr:'tr-TR', uk:'uk-UA', ur:'ur-PK',
+  vi:'vi-VN'
+};
+
+const LANG_NAMES = {
+  af:'Afrikaans', am:'Amharic', ar:'Arabic', bn:'Bengali', bg:'Bulgarian',
+  ca:'Catalan', zh:'Chinese (Simplified)', 'zh-TW':'Chinese (Traditional)',
+  hr:'Croatian', cs:'Czech', da:'Danish', nl:'Dutch', et:'Estonian',
+  tl:'Filipino', fi:'Finnish', fr:'French', de:'German', el:'Greek',
+  gu:'Gujarati', he:'Hebrew', hi:'Hindi', hu:'Hungarian', id:'Indonesian',
+  it:'Italian', ja:'Japanese', kn:'Kannada', km:'Khmer', ko:'Korean',
+  lo:'Lao', lv:'Latvian', lt:'Lithuanian', ms:'Malay', ml:'Malayalam',
+  mr:'Marathi', ne:'Nepali', no:'Norwegian', fa:'Persian', pl:'Polish',
+  pt:'Portuguese', pa:'Punjabi', ro:'Romanian', ru:'Russian', sr:'Serbian',
+  si:'Sinhala', sk:'Slovak', es:'Spanish', sw:'Swahili', sv:'Swedish',
+  ta:'Tamil', te:'Telugu', th:'Thai', tr:'Turkish', uk:'Ukrainian',
+  ur:'Urdu', vi:'Vietnamese'
+};
+
+async function translateText(text, fromLang, toLang) {
+  if (!text.trim()) return '';
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=${toLang}&dt=t&q=${encodeURIComponent(text)}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const result = d[0]?.map(chunk => chunk[0]).join('');
+    if (result) return result;
+  } catch(e) {}
+  return '[Translation unavailable]';
+}
+
+let tcSpeaker  = 'patient';
+let tcLive     = false;
+let tcPatientRec    = null;
+let tcCaregiverRec  = null;
+let tcMessages      = [];
+let tcSessionEntryId = null;
+
+function initTranslateSection() {
+  const lang = currentPatient?.patient_language;
+  document.getElementById('translate-no-lang').style.display = lang ? 'none' : 'block';
+  document.getElementById('translate-chat').style.display    = lang ? 'block' : 'none';
+  if (!lang) return;
+
+  const pName = currentPatient.name;
+  const cName = currentCaregiver?.name || 'You';
+  const lName = LANG_NAMES[lang] || lang;
+  document.getElementById('tc-title').textContent    = `${pName} · ${cName}`;
+  document.getElementById('tc-subtitle').textContent = `${lName} ↔ English`;
+  document.getElementById('tc-patient-label').textContent   = pName;
+  document.getElementById('tc-caregiver-label').textContent = cName;
+  tcSelect('patient');
+  tcInitRecs();
+}
+
+function tcSelect(who) {
+  tcSpeaker = who;
+  const pBtn = document.getElementById('tc-toggle-patient');
+  const cBtn = document.getElementById('tc-toggle-caregiver');
+  pBtn.className = 'tc-toggle-btn' + (who === 'patient'   ? ' active-patient'   : '');
+  cBtn.className = 'tc-toggle-btn' + (who === 'caregiver' ? ' active-caregiver' : '');
+  const speakBtn = document.getElementById('tc-speak-btn');
+  speakBtn.style.background = who === 'patient' ? 'var(--navy)' : '#2d6a4f';
+}
+
+function tcBuildRec(speechLang, fromLang, toLang, isPatient) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const rec = new SR();
+  rec.lang = speechLang;
+  rec.continuous = false;
+  rec.interimResults = false;
+  const speakerName = isPatient ? currentPatient.name : (currentCaregiver?.name || 'You');
+  rec.onresult = async e => {
+    const original   = e.results[0][0].transcript;
+    const translated = await translateText(original, fromLang, toLang);
+    tcAddMessage(speakerName, original, translated, isPatient);
+  };
+  rec.onend = () => {
+    tcLive = false;
+    tcResetSpeakBtn();
+    if (localStorage.getItem('carelog_voice_mode') === 'enabled') setTimeout(startWakeListener, 600);
+  };
+  rec.onerror = e => {
+    tcLive = false;
+    tcResetSpeakBtn();
+    if (e.error !== 'no-speech') console.warn('translate error:', e.error);
+  };
+  return rec;
+}
+
+function tcInitRecs() {
+  const lang = currentPatient?.patient_language;
+  if (!lang) return;
+  const speechLang = SPEECH_LANG_MAP[lang] || lang;
+  tcPatientRec   = tcBuildRec(speechLang, lang, 'en', true);
+  tcCaregiverRec = tcBuildRec('en-US', 'en', lang, false);
+}
+
+function tcSpeak() {
+  const lang = currentPatient?.patient_language;
+  if (!lang) return;
+
+  if (tcLive) {
+    try { (tcSpeaker === 'patient' ? tcPatientRec : tcCaregiverRec)?.stop(); } catch(e) {}
+    return;
+  }
+
+  stopWakeListener();
+
+  const isPatient = tcSpeaker === 'patient';
+  const speechLang = isPatient ? (SPEECH_LANG_MAP[lang] || lang) : 'en-US';
+
+  // rebuild this side's instance fresh each time
+  if (isPatient) tcPatientRec   = tcBuildRec(speechLang, lang, 'en', true);
+  else           tcCaregiverRec = tcBuildRec('en-US', 'en', lang, false);
+
+  const rec = isPatient ? tcPatientRec : tcCaregiverRec;
+  if (!rec) { alert('Voice input requires Chrome or Edge.'); return; }
+
+  try {
+    rec.start();
+    tcLive = true;
+    const btn = document.getElementById('tc-speak-btn');
+    btn.textContent = '⏹ Stop';
+    btn.classList.add('listening');
+  } catch(e) {
+    tcLive = false;
+    tcResetSpeakBtn();
+  }
+}
+
+function tcResetSpeakBtn() {
+  const btn = document.getElementById('tc-speak-btn');
+  btn.textContent = '🎙 Speak';
+  btn.classList.remove('listening');
+  btn.style.background = tcSpeaker === 'caregiver' ? '#2d6a4f' : 'var(--navy)';
+}
+
+async function tcAddMessage(name, original, translated, isPatient) {
+  document.getElementById('tc-empty')?.remove();
+
+  const capName = name.charAt(0).toUpperCase() + name.slice(1);
+  const side    = isPatient ? 'patient' : 'caregiver';
+
+  // Translation = big bubble (what the OTHER person reads)
+  // Original    = subdued reference below
+  const englishText = isPatient ? translated : original;
+  const nativeText  = isPatient ? original   : translated;
+
+  const box    = document.createElement('div');
+  box.className = `tc-msg ${side}`;
+
+  const label  = document.createElement('div');
+  label.className = 'tc-msg-name';
+  label.textContent = capName;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'tc-bubble';
+  bubble.textContent = translated;
+
+  const trans  = document.createElement('div');
+  trans.className = 'tc-translation';
+  trans.textContent = original;
+
+  box.appendChild(label);
+  box.appendChild(bubble);
+  box.appendChild(trans);
+
+  const msgs = document.getElementById('tc-messages');
+  msgs.appendChild(box);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  tcMessages.push({ speaker: capName, english: englishText, native: nativeText, isPatient });
+  await tcAutoSave();
+
+  if (isPatient && englishText) {
+    checkTranslationEmergency(englishText);
+  }
+}
+
+async function checkTranslationEmergency(text) {
+  try {
+    const r = await fetch('/api/detect-emergency', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const d = await r.json();
+    if (!d.emergency) return;
+
+    showEmergencyOverlay(d);
+
+    if (tcSessionEntryId) {
+      await fetch(`/api/entry/${tcSessionEntryId}/flag-emergency`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emergency_type: d.emergency_type, emergency_phrase: d.emergency_phrase })
+      });
+      loadAlertBadge();
+    }
+  } catch(e) {}
+}
+
+function clearTranslate() {
+  tcMessages = [];
+  tcSessionEntryId = null;
+  document.getElementById('tc-messages').innerHTML =
+    '<div id="tc-empty" class="tc-empty-msg">Select who is speaking below, then tap Speak.</div>';
+}
+
+async function tcAutoSave() {
+  if (!tcMessages.length) return;
+
+  const lang    = currentPatient?.patient_language;
+  const langName = LANG_NAMES[lang] || lang;
+  const patName  = currentPatient?.name
+    ? currentPatient.name.charAt(0).toUpperCase() + currentPatient.name.slice(1)
+    : 'Patient';
+
+  const transcript = tcMessages.map(m =>
+    `${m.speaker}: ${m.english}${m.native && m.native !== m.english ? ` (${m.native})` : ''}`
+  ).join('\n');
+
+  const note = `[Translation Session — ${patName}, ${langName} ↔ English]\n\n${transcript}`;
+
+  try {
+    if (!tcSessionEntryId) {
+      const r = await fetch('/api/entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note, note_type: 'translation' })
+      });
+      const d = await r.json();
+      if (d.id) { tcSessionEntryId = d.id; updateAlertBadge(); }
+    } else {
+      await fetch(`/api/entry/${tcSessionEntryId}/update-note`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note })
+      });
+    }
+  } catch(e) {}
 }
 </script>
 </body>
