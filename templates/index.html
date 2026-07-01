@@ -4706,8 +4706,11 @@ async function tcSpeakIOS() {
     const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     const chunks = [];
 
+    let stopProcessed = false;
     mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
     mr.onstop = async () => {
+      if (stopProcessed) return;
+      stopProcessed = true;
       stream.getTracks().forEach(t => t.stop());
       const btn = document.getElementById('tc-speak-btn');
       btn.textContent = '⏳ Transcribing…';
