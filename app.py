@@ -2195,18 +2195,31 @@ def voice_profile():
 
 # ── Translation ────────────────────────────────────────────────────────────────
 
+_translation_cache = {}
+
 @app.route('/api/translate', methods=['POST'])
 def translate_text():
     data = request.get_json(silent=True) or {}
-    text     = (data.get('text') or '').strip()[:1000]
+    text      = (data.get('text') or '').strip()[:1000]
     from_lang = (data.get('from') or 'auto').strip()[:10]
     to_lang   = (data.get('to')   or 'en').strip()[:10]
     if not text:
         return jsonify({'error': 'no text'}), 400
+
+    cache_key = (text.lower(), from_lang, to_lang)
+    if cache_key in _translation_cache:
+        return jsonify({'translated': _translation_cache[cache_key]})
+
     try:
         from deep_translator import GoogleTranslator
         result = GoogleTranslator(source=from_lang, target=to_lang).translate(text)
-        return jsonify({'translated': result or ''})
+        if not result:
+            raise ValueError('empty result')
+        # retry once if result looks like source (untranslated)
+        if result.strip().lower() == text.strip().lower():
+            result = GoogleTranslator(source='auto', target=to_lang).translate(text)
+        _translation_cache[cache_key] = result
+        return jsonify({'translated': result})
     except Exception:
         return jsonify({'error': 'translation_failed'}), 500
 
