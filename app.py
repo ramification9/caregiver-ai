@@ -2002,13 +2002,12 @@ def seed_data():
 
     # Seed patient and caregiver
     conn.execute(
-        "INSERT INTO patients (name, is_veteran, patient_language, start_of_care) VALUES (?, ?, ?, ?)",
-        ("Robert", 1, "es", "2026-03-26")
+        "INSERT INTO patients (name, is_veteran, patient_language) VALUES (?, ?, ?)",
+        ("Robert", 1, "es")
     )
-    caregiver_uuid = str(uuid.uuid4())
     conn.execute(
-        "INSERT INTO caregivers (name, uuid) VALUES (?, ?)",
-        ("Jimmy", caregiver_uuid)
+        "INSERT INTO caregivers (name, caregiver_id) VALUES (?, ?)",
+        ("Jimmy", str(uuid.uuid4()))
     )
     conn.commit()
 
