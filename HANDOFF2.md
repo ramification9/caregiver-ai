@@ -116,7 +116,9 @@ Required for Phase 1 submission.
 /home/mrlog/caregiver-ai/application/cover-page.md — name/email/phone/address blank.
 
 ### 5. SAM.gov UEI Registration
-User must do this themselves (takes days). Start immediately — can take 1-2 weeks.
+**IN PROGRESS** — Francisco Ramirez (far2990@gmail.com) started registration 2026-07-01.
+At "Create New Entity" step. Once complete, UEI goes on cover-page.md.
+Can take 7-14 business days to process after submission.
 
 ### 6. Voice Login on Lock Screen
 voice_profiles table exists, enrollment works, lock screen PIN UI doesn't offer voice auth yet.

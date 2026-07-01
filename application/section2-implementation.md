@@ -71,7 +71,7 @@ Projected live deployment: **October 2026**
 
 ## Team
 
-**Builder and Project Lead:** [Your Name], Retired U.S. Army Sergeant First Class
+**Builder and Project Lead:** Francisco Ramirez, Retired U.S. Army Sergeant First Class
 
 Domain expertise: direct experience navigating the military medical system from active duty through the VA, including firsthand observation of documentation failures that affect veteran care access and claims eligibility.
 

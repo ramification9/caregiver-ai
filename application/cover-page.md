@@ -3,13 +3,13 @@
 
 ---
 
-**Team / Applicant Name:** [Your Full Name]
+**Team / Applicant Name:** Francisco Ramirez
 
 **AI Solution Name:** CareLog — Veteran Caregiver Daily Log
 
 **Primary Contact:**
-- Name: [Your Full Name]
-- Email: [Your Email]
+- Name: Francisco Ramirez
+- Email: far2990@gmail.com
 - Phone: [Your Phone]
 - Address: [Your Address]
 
