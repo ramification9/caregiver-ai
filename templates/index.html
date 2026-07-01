@@ -4604,11 +4604,16 @@ async function translateText(text, fromLang, toLang) {
   return '[Translation unavailable]';
 }
 
-let tcSpeaker  = 'patient';
-let tcLive     = false;
-let tcPatientRec    = null;
-let tcCaregiverRec  = null;
-let tcMessages      = [];
+const tcIsIOS  = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const tcHasSR  = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+let tcSpeaker         = 'patient';
+let tcLive            = false;
+let tcPatientRec      = null;
+let tcCaregiverRec    = null;
+let tcMessages        = [];
+let tcIOSRecorder     = null;
+let tcSpeechUnlocked  = false;
 let tcSessionEntryId = null;
 
 function initTranslateSection() {
@@ -4672,9 +4677,72 @@ function tcInitRecs() {
   tcCaregiverRec = tcBuildRec('en-US', 'en', lang, false);
 }
 
+async function tcSpeakIOS() {
+  const lang = currentPatient?.patient_language;
+  const isPatient = tcSpeaker === 'patient';
+
+  if (tcLive) {
+    if (tcIOSRecorder) { try { tcIOSRecorder.stop(); } catch(e) {} }
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'  :
+                     MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+
+    mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mr.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const btn = document.getElementById('tc-speak-btn');
+      btn.textContent = '⏳ Transcribing…';
+      btn.disabled = true;
+      try {
+        const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+        const speechLang = isPatient ? lang : 'en';
+        const original = await window.whisperTranscribe(blob, speechLang);
+        if (original) {
+          const fromLang = isPatient ? lang : 'en';
+          const toLang   = isPatient ? 'en' : lang;
+          const translated = await translateText(original, fromLang, toLang);
+          const speakerName = isPatient ? currentPatient.name : (currentCaregiver?.name || 'You');
+          tcAddMessage(speakerName, original, translated, isPatient);
+        }
+      } catch(e) { console.error('iOS translate error:', e); }
+      finally { btn.disabled = false; tcLive = false; tcResetSpeakBtn(); }
+    };
+
+    tcIOSRecorder = mr;
+    mr.start();
+    tcLive = true;
+    const btn = document.getElementById('tc-speak-btn');
+    btn.textContent = '⏹ Stop';
+    btn.classList.add('listening');
+    btn.style.background = isPatient ? 'var(--navy)' : '#2d6a4f';
+  } catch(e) {
+    console.error('Mic error:', e);
+    tcLive = false;
+    tcResetSpeakBtn();
+  }
+}
+
 function tcSpeak() {
   const lang = currentPatient?.patient_language;
   if (!lang) return;
+
+  // Unlock SpeechSynthesis on first user gesture (iOS requires this)
+  if (!tcSpeechUnlocked) {
+    const u = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(u);
+    tcSpeechUnlocked = true;
+  }
+
+  if (tcIsIOS || !tcHasSR) {
+    tcSpeakIOS();
+    return;
+  }
 
   if (tcLive) {
     try { (tcSpeaker === 'patient' ? tcPatientRec : tcCaregiverRec)?.stop(); } catch(e) {}
@@ -4752,6 +4820,17 @@ async function tcAddMessage(name, original, translated, isPatient) {
   if (isPatient && englishText) {
     checkTranslationEmergency(englishText);
   }
+
+  // Auto read-back: when caregiver speaks, read translation aloud to patient in their language
+  if (!isPatient && translated && window.speechSynthesis) {
+    const patLang = currentPatient?.patient_language;
+    const voiceLang = SPEECH_LANG_MAP[patLang] || 'es-US';
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(translated);
+    u.lang = voiceLang;
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  }
 }
 
 async function checkTranslationEmergency(text) {
@@ -4816,6 +4895,41 @@ async function tcAutoSave() {
       });
     }
   } catch(e) {}
+}
+</script>
+
+<script type="module">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+env.backends.onnx.wasm.numThreads = 1;
+
+let _whisperEn    = null;
+let _whisperMulti = null;
+
+window.whisperTranscribe = async function(audioBlob, lang) {
+  const isEnglish = !lang || lang === 'en';
+  if (isEnglish && !_whisperEn) {
+    _whisperEn = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+  } else if (!isEnglish && !_whisperMulti) {
+    _whisperMulti = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+  }
+  const model = isEnglish ? _whisperEn : _whisperMulti;
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  const float32 = audioBuffer.getChannelData(0);
+  const result = await model(float32, { sampling_rate: 16000 });
+  return result.text.trim();
+};
+
+// Preload English model on iOS so it's ready when caregiver speaks
+if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+  pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
+    progress_callback: p => {
+      if (p.status === 'downloading') {
+        console.log('Whisper model:', Math.round(p.progress || 0) + '%');
+      }
+    }
+  }).then(m => { _whisperEn = m; console.log('Whisper ready'); });
 }
 </script>
 </body>
