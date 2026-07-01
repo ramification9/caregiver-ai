@@ -100,30 +100,44 @@ Full bidirectional translation with blind patient accessibility:
 
 ---
 
-## What's NOT Built Yet (priority order)
+## What's NOT Built Yet / Not Done (priority order)
 
-### 1. Real Claude API
-SANDBOX_MODE=False, implement live_extract() ~line 580 app.py.  
-Model: claude-haiku-4-5-20251001. User must provide ANTHROPIC_API_KEY env var in Railway.
+### 1. SAM.gov UEI Registration ⚠️ MOST URGENT
+**IN PROGRESS** — Francisco Ramirez (far2990@gmail.com) started 2026-07-01.
+Left off at "Create New Entity" screen. Must complete and submit — takes 7-14 business days.
+UEI number goes in cover-page.md when received.
 
-### 2. Demo Video
-Required for Phase 1 submission.
+### 2. Application Cover Page — PARTIALLY DONE
+Name (Francisco Ramirez) and email (far2990@gmail.com) filled in.
+Still missing: **phone, address, UEI number**.
+File: /home/mrlog/caregiver-ai/application/cover-page.md
 
-### 3. Caregiver Quotes
-3 `[NOTE: Insert quote here]` placeholders in application/section1, section3, section4.
+### 3. Caregiver Quotes — 4 PLACEHOLDERS REMAINING
+- Section 1 line 63: 1 quote from caregiver feedback session
+- Section 3 lines 78-80: 3 observations (quote, hesitation, intended use)
+- Section 4 line 101: 1 quote
+Francisco must provide these from his real caregiver testing session.
 
-### 4. Application Cover Page
-/home/mrlog/caregiver-ai/application/cover-page.md — name/email/phone/address blank.
+### 4. Partnerships Section
+Application judged on multi-stakeholder involvement. Solo project needs explicit response addressing this gap. Suggest adding a paragraph to Section 2.
 
-### 5. SAM.gov UEI Registration
-**IN PROGRESS** — Francisco Ramirez (far2990@gmail.com) started registration 2026-07-01.
-At "Create New Entity" step. Once complete, UEI goes on cover-page.md.
-Can take 7-14 business days to process after submission.
+### 5. Demo Video
+Required to show working prototype. Not recorded yet.
 
-### 6. Voice Login on Lock Screen
-voice_profiles table exists, enrollment works, lock screen PIN UI doesn't offer voice auth yet.
+### 6. Real Claude API
+SANDBOX_MODE=False, implement live_extract() ~line 580 app.py.
+Model: claude-haiku-4-5-20251001. Need ANTHROPIC_API_KEY env var in Railway.
 
-### 7. Real App Icon
+### 7. Appendices (max 10 pages)
+Not started. Could include screenshots, sample output logs, caregiver feedback summary.
+
+### 8. Data Output Logs
+Required per Technical Requirements Guide. Not started.
+
+### 9. Voice Login on Lock Screen
+voice_profiles table exists, enrollment works, lock screen PIN UI doesn't offer voice auth.
+
+### 10. Real App Icon
 Placeholder C in place.
 
 ---
@@ -155,8 +169,8 @@ Placeholder C in place.
 ---
 
 ## Git log (last 5 as of end of session)
-1. Replace Whisper with backend STT via SpeechRecognition+Google — zero download
-2. Revert to whisper-tiny with language hint (superseded by backend STT)
-3. Add translation cache + retry
-4. Guard iOS MediaRecorder onstop against double-fire
-5. Move translation to backend using deep-translator
+1. Update handoff: SAM.gov in progress; fill in Francisco Ramirez name/email
+2. Update HANDOFF2 — translate tab complete
+3. Replace Whisper with backend STT via SpeechRecognition+Google — zero download
+4. Add translation cache + retry — fixes inconsistent Google Translate results
+5. Guard iOS MediaRecorder onstop against double-fire causing duplicate messages
