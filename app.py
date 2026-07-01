@@ -2193,6 +2193,23 @@ def voice_profile():
         "spectral_centroid": row["spectral_centroid"]
     })
 
+# ── Translation ────────────────────────────────────────────────────────────────
+
+@app.route('/api/translate', methods=['POST'])
+def translate_text():
+    data = request.get_json(silent=True) or {}
+    text     = (data.get('text') or '').strip()[:1000]
+    from_lang = (data.get('from') or 'auto').strip()[:10]
+    to_lang   = (data.get('to')   or 'en').strip()[:10]
+    if not text:
+        return jsonify({'error': 'no text'}), 400
+    try:
+        from deep_translator import GoogleTranslator
+        result = GoogleTranslator(source=from_lang, target=to_lang).translate(text)
+        return jsonify({'translated': result or ''})
+    except Exception:
+        return jsonify({'error': 'translation_failed'}), 500
+
 # ── Text-to-Speech ─────────────────────────────────────────────────────────────
 
 @app.route('/api/tts', methods=['POST'])
