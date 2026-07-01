@@ -3,73 +3,82 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CareLog — Voice Sandbox Test</title>
+<title>CareLog — Voice Test</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #EEF2F7; color: #2C3E50; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
 
-  .sandbox-bar { background: #7D6608; color: #FEF9E7; text-align: center; padding: 8px 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; width: 100%; position: fixed; top: 0; left: 0; z-index: 100; }
+  .sandbox-bar { background: #1B4F72; color: #EEF2F7; text-align: center; padding: 8px 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; width: 100%; position: fixed; top: 0; left: 0; z-index: 100; }
 
   .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; width: 100%; max-width: 480px; margin-top: 56px; }
 
   h1 { font-size: 20px; font-weight: 700; color: #1B4F72; margin-bottom: 4px; }
-  .subtitle { font-size: 13px; color: #6C757D; margin-bottom: 24px; }
+  .subtitle { font-size: 13px; color: #6C757D; margin-bottom: 20px; }
 
-  .platform-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-bottom: 20px; }
+  .platform-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px; }
   .platform-badge.ios { background: #D5F5E3; color: #1E8449; }
   .platform-badge.android { background: #EBF5FB; color: #1A5276; }
 
+  /* Model loading bar */
+  .model-status { background: #FEF9E7; border: 1px solid #F9E79F; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: #7D6608; display: none; }
+  .model-status.visible { display: block; }
+  .model-status.ready { background: #D5F5E3; border-color: #A9DFBF; color: #1E8449; }
+  .progress-bar { height: 4px; background: #F9E79F; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #7D6608; border-radius: 2px; transition: width 0.3s; width: 0%; }
+
   .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #6C757D; margin-bottom: 10px; }
 
-  /* Mic button */
   .btn-mic { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; border-radius: 50px; border: 2px solid #2874A6; background: white; color: #2874A6; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
   .btn-mic.recording { background: #C0392B; border-color: #C0392B; color: white; animation: pulse 1.2s infinite; }
   .btn-mic.processing { background: #7D6608; border-color: #7D6608; color: white; }
-  .btn-mic:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-mic:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
 
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 
   .recording-prompt { text-align: center; font-size: 13px; color: #C0392B; font-weight: 600; margin-top: 10px; min-height: 20px; }
 
-  /* Transcript box */
-  .transcript-box { margin-top: 20px; background: #F4F6F7; border: 1px solid #D5D8DC; border-radius: 8px; padding: 14px; min-height: 80px; font-size: 15px; color: #2C3E50; line-height: 1.6; }
+  .transcript-box { margin-top: 16px; background: #F4F6F7; border: 1px solid #D5D8DC; border-radius: 8px; padding: 14px; min-height: 80px; font-size: 15px; color: #2C3E50; line-height: 1.6; }
   .transcript-box.empty { color: #A0A0A0; font-style: italic; }
 
   /* Auto read toggle */
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #F4F6F7; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #F4F6F7; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
   .toggle-row label { font-size: 14px; font-weight: 600; color: #2C3E50; }
   .toggle-row span { font-size: 12px; color: #6C757D; }
-  .toggle { position: relative; width: 44px; height: 24px; }
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
   .toggle input { opacity: 0; width: 0; height: 0; }
   .toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 24px; cursor: pointer; transition: 0.2s; }
   .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
   .toggle input:checked + .toggle-slider { background: #1E8449; }
   .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
 
-  /* Read aloud button */
-  .btn-read { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 50px; border: 2px solid #1E8449; background: white; color: #1E8449; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 14px; transition: all 0.2s; }
+  .btn-read { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 50px; border: 2px solid #1E8449; background: white; color: #1E8449; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
   .btn-read:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-read.speaking { background: #1E8449; color: white; }
 
-  /* Status log */
-  .status-log { margin-top: 20px; background: #1B4F72; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; color: #85C1E9; max-height: 160px; overflow-y: auto; }
+  .divider { border: none; border-top: 1px solid #D5D8DC; margin: 18px 0; }
+
+  .status-log { margin-top: 16px; background: #1B4F72; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; color: #85C1E9; max-height: 160px; overflow-y: auto; }
   .status-log p { margin-bottom: 4px; }
   .status-log p:last-child { color: white; }
-
-  .divider { border: none; border-top: 1px solid #D5D8DC; margin: 20px 0; }
 </style>
 </head>
 <body>
 
-<div class="sandbox-bar">SANDBOX MODE — Voice Feature Test</div>
+<div class="sandbox-bar">CareLog — Voice Test (Real Whisper.js on iOS)</div>
 
 <div class="card">
   <h1>CareLog Voice Test</h1>
-  <p class="subtitle">Tests voice input + read-aloud before building into the main app.</p>
+  <p class="subtitle">Tap mic, speak, hear it read back. Your real voice — no fake text.</p>
 
   <div id="platform-badge" class="platform-badge">Detecting…</div>
 
-  <div class="section-label">Step 1 — Voice Input</div>
+  <div id="model-status" class="model-status">
+    <span id="model-msg">Loading Whisper voice model (~75MB, cached after first load)…</span>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <hr class="divider">
+  <div class="section-label">Step 1 — Speak</div>
 
   <button class="btn-mic" id="mic-btn" onclick="handleMic()">
     <span id="mic-icon">🎙</span>
@@ -78,17 +87,15 @@
   <div class="recording-prompt" id="recording-prompt"></div>
 
   <hr class="divider">
-
   <div class="section-label">Step 2 — Transcript</div>
   <div class="transcript-box empty" id="transcript-box">Your spoken words will appear here…</div>
 
   <hr class="divider">
-
   <div class="section-label">Step 3 — Read Aloud</div>
   <div class="toggle-row">
     <div>
       <label for="auto-toggle">Auto Read-Back</label><br>
-      <span>Reads transcript automatically after recording</span>
+      <span>Reads transcript automatically — for blind users</span>
     </div>
     <label class="toggle">
       <input type="checkbox" id="auto-toggle" checked>
@@ -100,23 +107,28 @@
     <span id="read-label">Read It Back</span>
   </button>
 
-  <div class="status-log" id="status-log">
-    <p>» Initializing…</p>
-  </div>
+  <div class="status-log" id="status-log"><p>» Initializing…</p></div>
 </div>
 
-<script>
+<script type="module">
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+  // Single-thread mode — avoids SharedArrayBuffer requirement on GitHub Pages
+  env.backends.onnx.wasm.numThreads = 1;
+
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const hasSR  = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
-  let isRecording   = false;
-  let mediaRecorder = null;
-  let audioChunks   = [];
-  let srInstance    = null;
-  let transcript    = '';
+  let isRecording    = false;
+  let mediaRecorder  = null;
+  let audioChunks    = [];
+  let srInstance     = null;
+  let transcript     = '';
   let speechUnlocked = false;
+  let whisper        = null;
+  let whisperLoading = false;
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  // ── Logging ───────────────────────────────────────────────────────────────
 
   function log(msg) {
     const box = document.getElementById('status-log');
@@ -126,75 +138,130 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  function setPlatformBadge() {
-    const badge = document.getElementById('platform-badge');
-    if (isIOS) {
-      badge.textContent = 'iOS — Whisper.js path (sandbox)';
-      badge.className = 'platform-badge ios';
-      log('Platform: iOS detected — using MediaRecorder sandbox flow');
-    } else if (hasSR) {
-      badge.textContent = 'Android / Desktop — SpeechRecognition';
-      badge.className = 'platform-badge android';
-      log('Platform: Android/Desktop — using webkitSpeechRecognition');
-    } else {
-      badge.textContent = 'Unknown — no speech support detected';
-      badge.className = 'platform-badge';
-      log('Warning: no speech API detected on this device');
-    }
+  // ── Platform badge ────────────────────────────────────────────────────────
+
+  const badge = document.getElementById('platform-badge');
+  if (isIOS) {
+    badge.textContent = 'iOS — Whisper.js';
+    badge.className = 'platform-badge ios';
+    log('Platform: iOS — using MediaRecorder + Whisper.js');
+  } else if (hasSR) {
+    badge.textContent = 'Android / Desktop — SpeechRecognition';
+    badge.className = 'platform-badge android';
+    log('Platform: Android/Desktop — using webkitSpeechRecognition');
+  } else {
+    badge.textContent = 'Unknown — falling back to Whisper.js';
+    badge.className = 'platform-badge ios';
+    log('No SpeechRecognition detected — using Whisper.js fallback');
   }
 
-  // ── Mic button handler ────────────────────────────────────────────────────
+  // ── Whisper model loader ──────────────────────────────────────────────────
 
-  function handleMic() {
-    // Unlock SpeechSynthesis on first user tap (required by iOS)
+  async function loadWhisper() {
+    if (whisper) return whisper;
+    if (whisperLoading) return null;
+    whisperLoading = true;
+
+    const statusEl = document.getElementById('model-status');
+    const msgEl    = document.getElementById('model-msg');
+    const fillEl   = document.getElementById('progress-fill');
+    statusEl.classList.add('visible');
+    log('Loading Whisper tiny.en model…');
+
+    whisper = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
+      progress_callback: (p) => {
+        if (p.status === 'downloading') {
+          const pct = Math.round(p.progress || 0);
+          fillEl.style.width = pct + '%';
+          msgEl.textContent = `Downloading voice model… ${pct}%`;
+          log('Model download: ' + pct + '%');
+        }
+        if (p.status === 'done') {
+          msgEl.textContent = 'Voice model ready';
+          fillEl.style.width = '100%';
+          statusEl.classList.add('ready');
+          log('Whisper model loaded and ready');
+        }
+      }
+    });
+    return whisper;
+  }
+
+  // Preload model on iOS immediately
+  if (isIOS || !hasSR) loadWhisper();
+
+  // ── Mic button ────────────────────────────────────────────────────────────
+
+  window.handleMic = function() {
     if (!speechUnlocked) {
       const u = new SpeechSynthesisUtterance('');
       window.speechSynthesis.speak(u);
       speechUnlocked = true;
-      log('SpeechSynthesis unlocked');
     }
     if (isIOS || !hasSR) {
       isRecording ? stopIOSRecording() : startIOSRecording();
     } else {
       isRecording ? stopAndroidRecording() : startAndroidRecording();
     }
-  }
+  };
 
-  // ── iOS flow — MediaRecorder → fake Whisper sandbox ──────────────────────
+  // ── iOS — MediaRecorder → Whisper.js ─────────────────────────────────────
 
   async function startIOSRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'  :
+                       MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.start();
       isRecording = true;
       setMicState('recording');
-      log('Microphone open — recording started');
+      log('Recording started — speak now');
     } catch (err) {
       log('Mic error: ' + err.message);
     }
   }
 
-  function stopIOSRecording() {
+  async function stopIOSRecording() {
     if (!mediaRecorder) return;
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(t => t.stop());
     isRecording = false;
     setMicState('processing');
-    log('Recording stopped — processing… (sandbox: 2s fake delay)');
+    log('Recording stopped — transcribing with Whisper…');
 
-    setTimeout(() => {
-      // Sandbox: fake transcript instead of real Whisper
-      const fakeTranscript = 'Robert did not sleep well last night. He seemed anxious at breakfast and refused his morning medication.';
-      setTranscript(fakeTranscript);
-      setMicState('idle');
-      log('Sandbox transcript injected — in production, Whisper.js would transcribe the audio');
-    }, 2000);
+    mediaRecorder.onstop = async () => {
+      try {
+        const mimeType = audioChunks[0]?.type || 'audio/webm';
+        const audioBlob = new Blob(audioChunks, { type: mimeType });
+
+        // Decode audio to Float32Array at 16kHz for Whisper
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const float32 = audioBuffer.getChannelData(0);
+
+        log('Audio decoded — running Whisper…');
+        const model = await loadWhisper();
+        if (!model) { log('Model not ready yet — try again in a moment'); setMicState('idle'); return; }
+
+        const result = await model(float32, { sampling_rate: 16000 });
+        const text = result.text.trim();
+        log('Whisper transcription complete');
+        setTranscript(text || '(no speech detected)');
+      } catch (err) {
+        log('Transcription error: ' + err.message);
+        setMicState('idle');
+      }
+    };
+
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
   }
 
-  // ── Android / Desktop flow — real SpeechRecognition ──────────────────────
+  // ── Android / Desktop — SpeechRecognition ────────────────────────────────
 
   function startAndroidRecording() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -203,26 +270,16 @@
     srInstance.interimResults = true;
     srInstance.lang = 'en-US';
 
-    srInstance.onstart = () => {
-      isRecording = true;
-      setMicState('recording');
-      log('SpeechRecognition started — speak now');
-    };
-
+    srInstance.onstart  = () => { isRecording = true; setMicState('recording'); log('SpeechRecognition started'); };
     srInstance.onresult = e => {
       let final = '';
       for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
       }
-      if (final.trim()) {
-        setTranscript(final.trim());
-        log('Transcript updated');
-      }
+      if (final.trim()) { setTranscript(final.trim()); log('Transcript updated'); }
     };
-
     srInstance.onerror = e => { log('SR error: ' + e.error); setMicState('idle'); };
-    srInstance.onend  = () => { if (isRecording) { isRecording = false; setMicState('idle'); } };
-
+    srInstance.onend   = () => { if (isRecording) { isRecording = false; setMicState('idle'); } };
     srInstance.start();
   }
 
@@ -233,14 +290,13 @@
     log('SpeechRecognition stopped');
   }
 
-  // ── UI state helpers ──────────────────────────────────────────────────────
+  // ── UI helpers ────────────────────────────────────────────────────────────
 
   function setMicState(state) {
     const btn    = document.getElementById('mic-btn');
     const icon   = document.getElementById('mic-icon');
     const label  = document.getElementById('mic-label');
     const prompt = document.getElementById('recording-prompt');
-
     btn.className = 'btn-mic';
     btn.disabled  = false;
 
@@ -248,13 +304,13 @@
       btn.classList.add('recording');
       icon.textContent  = '⏹';
       label.textContent = 'Tap to Stop';
-      prompt.textContent = isIOS ? '🔴 Recording… tap Stop when done' : '🔴 Listening… tap Stop when done';
+      prompt.textContent = '🔴 Recording… tap Stop when done';
     } else if (state === 'processing') {
       btn.classList.add('processing');
       btn.disabled = true;
       icon.textContent  = '⏳';
-      label.textContent = 'Processing…';
-      prompt.textContent = 'Transcribing your audio…';
+      label.textContent = 'Transcribing…';
+      prompt.textContent = 'Processing your audio…';
     } else {
       icon.textContent  = '🎙';
       label.textContent = 'Tap to Speak';
@@ -267,13 +323,13 @@
     const box = document.getElementById('transcript-box');
     box.textContent = text;
     box.classList.remove('empty');
+    setMicState('idle');
     document.getElementById('read-btn').disabled = false;
-    const autoOn = document.getElementById('auto-toggle').checked;
-    if (autoOn) {
-      log('Transcript ready — auto read-back starting…');
+    if (document.getElementById('auto-toggle').checked) {
+      log('Auto read-back starting…');
       setTimeout(readAloud, 400);
     } else {
-      log('Transcript ready — tap Read It Back to hear it');
+      log('Transcript ready — tap Read It Back');
     }
   }
 
@@ -287,31 +343,22 @@
       return;
     }
     const u = new SpeechSynthesisUtterance(transcript);
-    u.rate = 0.95;
-    u.onstart = () => { setReadState(true);  log('SpeechSynthesis — reading aloud'); };
+    u.rate   = 0.95;
+    u.onstart = () => { setReadState(true);  log('Reading aloud…'); };
     u.onend   = () => { setReadState(false); log('Read aloud complete'); };
     u.onerror = e => { setReadState(false);  log('Read aloud error: ' + e.error); };
     window.speechSynthesis.speak(u);
   }
+  window.readAloud = readAloud;
 
   function setReadState(speaking) {
     const btn  = document.getElementById('read-btn');
     const icon = document.getElementById('read-icon');
     const lbl  = document.getElementById('read-label');
-    if (speaking) {
-      btn.classList.add('speaking');
-      icon.textContent = '⏹';
-      lbl.textContent  = 'Tap to Stop';
-    } else {
-      btn.classList.remove('speaking');
-      icon.textContent = '🔊';
-      lbl.textContent  = 'Read It Back';
-    }
+    if (speaking) { btn.classList.add('speaking'); icon.textContent = '⏹'; lbl.textContent = 'Tap to Stop'; }
+    else          { btn.classList.remove('speaking'); icon.textContent = '🔊'; lbl.textContent = 'Read It Back'; }
   }
 
-  // ── Boot ──────────────────────────────────────────────────────────────────
-
-  setPlatformBadge();
   log('Ready — tap the mic button to begin');
 </script>
 </body>
