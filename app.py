@@ -1788,7 +1788,7 @@ def get_deletion_requests():
     conn.close()
     return jsonify({"requests": [dict(r) for r in rows]})
 
-@app.route("/api/seed", methods=["POST"])
+@app.route("/api/seed", methods=["GET", "POST"])
 def seed_data():
     """Load 120-day realistic sample data with pattern waves, crises, and violence. Sandbox only."""
     if not SANDBOX_MODE:
