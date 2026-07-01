@@ -4739,7 +4739,7 @@ function tcSpeak() {
     tcSpeechUnlocked = true;
   }
 
-  if (tcIsIOS || !tcHasSR) {
+  if (!tcHasSR) {
     tcSpeakIOS();
     return;
   }
@@ -4907,11 +4907,23 @@ let _whisperMulti = null;
 
 window.whisperTranscribe = async function(audioBlob, lang) {
   const isEnglish = !lang || lang === 'en';
+  const modelNeeded = isEnglish ? _whisperEn : _whisperMulti;
+
+  if (!modelNeeded) {
+    const notice = document.createElement('div');
+    notice.id = 'whisper-notice';
+    notice.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1B4F72;color:white;padding:10px 18px;border-radius:50px;font-size:13px;font-weight:600;z-index:9999;';
+    notice.textContent = 'Downloading voice engine (~39MB, one-time)…';
+    document.body.appendChild(notice);
+  }
+
   if (isEnglish && !_whisperEn) {
     _whisperEn = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
   } else if (!isEnglish && !_whisperMulti) {
     _whisperMulti = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
   }
+
+  document.getElementById('whisper-notice')?.remove();
   const model = isEnglish ? _whisperEn : _whisperMulti;
   const arrayBuffer = await audioBlob.arrayBuffer();
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
@@ -4921,16 +4933,7 @@ window.whisperTranscribe = async function(audioBlob, lang) {
   return result.text.trim();
 };
 
-// Preload English model on iOS so it's ready when caregiver speaks
-if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-  pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
-    progress_callback: p => {
-      if (p.status === 'downloading') {
-        console.log('Whisper model:', Math.round(p.progress || 0) + '%');
-      }
-    }
-  }).then(m => { _whisperEn = m; console.log('Whisper ready'); });
-}
+// Whisper loads on demand only — when whisperTranscribe() is first called
 </script>
 </body>
 </html>
