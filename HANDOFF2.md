@@ -1,5 +1,5 @@
 # CareLog — Session Handoff 2
-**Date:** 2026-07-01  
+**Date:** 2026-07-01 (updated end of session)
 **Status:** Active development — Phase 1 due 2026-07-31
 
 ---
@@ -20,30 +20,33 @@ ACL Caregiver AI Prize Challenge, Track 1. Up to $100K. Phase 1 due 2026-07-31 5
 | **GitHub Pages (test)** | https://ramification9.github.io/caregiver-ai/voice-test.html |
 | **Local path** | /home/mrlog/caregiver-ai/ |
 
-Railway auto-deploys from GitHub `master` branch. Procfile: `web: gunicorn app:app --bind 0.0.0.0:$PORT`
+Railway auto-deploys from GitHub `master` branch. Procfile: `web: gunicorn app:app --bind 0.0.0.0:$PORT`  
+**init_db() and migrate_db() run at module level** — works correctly under gunicorn.  
+**Seed data:** GET `https://web-production-88bed.up.railway.app/api/seed` — populates Robert, Jimmy, 120 days.
 
 ---
 
 ## Tech Stack
-- **Backend:** Flask (Python 3), app.py (2196 lines)
-- **Frontend:** Single-page Jinja2, templates/index.html (4939 lines)
+- **Backend:** Flask (Python 3), app.py (~2230 lines)
+- **Frontend:** Single-page Jinja2, templates/index.html (~5000 lines)
 - **DB:** SQLite, caregiver.db
 - **Mode:** SANDBOX_MODE=True (keyword extraction, zero API calls) — Claude API wired but not activated
 - **Port:** 5050 locally, $PORT on Railway
 
+### Backend libraries (requirements.txt)
+- `flask`, `gunicorn`, `gTTS`, `deep-translator`, `SpeechRecognition`
+
 ---
 
-## DB State (as of 2026-07-01)
-- 95 entries, 13 alerts, 4 medications, 49 wellbeing check-ins, 1 voice profile
-
+## DB State (Railway resets on deploy — run /api/seed after each deploy)
 **Tables:** entries, alerts, deletion_audit, patients, medications, med_log, caregivers, caregiver_checkins, caregiver_wellbeing, voice_profiles
 
 ---
 
 ## Demo Patient & Caregiver
-- **Patient:** Robert (veteran, Spanish speaker, start of care: 2026-03-26)
+- **Patient:** Robert (veteran, Spanish speaker, blind)
 - **Caregiver:** Jimmy
-- **Seed data:** 3-month arc with emergency days and pattern alerts
+- **Seed:** 120-day arc, emergency days, pattern alerts
 
 ---
 
@@ -57,6 +60,29 @@ Railway auto-deploys from GitHub `master` branch. Procfile: `web: gunicorn app:a
 ---
 
 ## What's Built
+
+### Translate Tab — COMPLETED THIS SESSION ✓
+Full bidirectional translation with blind patient accessibility:
+
+**Architecture:**
+- **STT:** Backend `/api/stt` — MediaRecorder → POST audio → SpeechRecognition + Google STT → text. Zero client download, works on iOS and Android.
+- **Translation:** Backend `/api/translate` — deep-translator + Google Translate. Server-side cache prevents inconsistent results.
+- **TTS:** Backend `/api/tts` — gTTS → MP3 → `<audio>` tag. Works on all iOS versions (no speechSynthesis unreliability).
+
+**Blind patient flow (Robert):**
+- Caregiver speaks English → auto-translates → **reads Spanish aloud to Robert automatically**
+- Robert speaks Spanish → translates → English bubble shown on screen for caregiver
+- Tap anywhere in message window → replays last audio for Robert
+- Tap any bubble → replays that specific bubble's audio
+- Emergency detected → audio stops immediately, overlay takes over
+
+**Protection layers:**
+- Emergency check before audio plays — emergency always takes priority
+- Audio stops on clearTranslate
+- All conversations auto-saved to entries table
+- 500-char limit on TTS, no content logging in STT/TTS endpoints
+
+### Everything else built previously
 - Log Today: voice/text entry, AI extraction, concern box, emoji tag chips
 - Caregiver check-in: Step 2, 1–5 rating + note
 - Emergency detection: 4-branch overlay (third_party > caregiver_safety > physical > mental)
@@ -67,11 +93,8 @@ Railway auto-deploys from GitHub `master` branch. Procfile: `web: gunicorn app:a
 - Locked alert log: multi-party deletion (request → code → PIN), audit trail
 - PIN lock screen: 5-attempt lockout, recovery question
 - Patient setup, caregiver UUID (uuid4, never changes)
-- Voice input: Web Speech API + Whisper.js fallback for iOS
 - Voice ID enrollment: audio fingerprint, bandpass filter, voice-confirmed badge
 - PWA: manifest, service worker, iOS meta, navy/gold C icon
-- Translate tab: Spanish ↔ English (40+ languages), auto-saves, bubble UI
-  - Auto read-back: caregiver→patient direction only (reads Spanish aloud to patient)
 - History tab: calendar view, color-coded tiles, Month at a Glance, multi-day select
 - Affirmation ticker: Great Vibes font, gold on navy
 
@@ -79,40 +102,26 @@ Railway auto-deploys from GitHub `master` branch. Procfile: `web: gunicorn app:a
 
 ## What's NOT Built Yet (priority order)
 
-### 1. Translate Tab — Tap-Anywhere TTS (IN PROGRESS THIS SESSION)
-**What:** Tap any message bubble in the Translate chat → reads it aloud in the correct language.  
-**Why:** Accessibility for blind users on Apple/iOS. Pure frontend — no backend needed.  
-**How:** `speechSynthesis` (same pattern as voice-test.html `readAloud()`)  
-**Logic:**
-- Patient bubble → read translated text in `en-US`
-- Caregiver bubble → read translated text in `SPEECH_LANG_MAP[patLang]`
-- Tap again while speaking → cancel
-- Visual: pulse/glow on speaking bubble
-
-**Files to change:** `templates/index.html`  
-**Key functions:** `tcAddMessage()` (~line 4783), CSS `.tc-bubble` (~line 520)  
-**Pattern to follow:** `readAloud()` in `voice-test.html` lines 338–360
-
-### 2. Real Claude API
+### 1. Real Claude API
 SANDBOX_MODE=False, implement live_extract() ~line 580 app.py.  
 Model: claude-haiku-4-5-20251001. User must provide ANTHROPIC_API_KEY env var in Railway.
 
-### 3. Demo Video
+### 2. Demo Video
 Required for Phase 1 submission.
 
-### 4. Caregiver Quotes
+### 3. Caregiver Quotes
 3 `[NOTE: Insert quote here]` placeholders in application/section1, section3, section4.
 
-### 5. Application Cover Page
+### 4. Application Cover Page
 /home/mrlog/caregiver-ai/application/cover-page.md — name/email/phone/address blank.
 
-### 6. SAM.gov UEI Registration
-User must do this themselves (takes days).
+### 5. SAM.gov UEI Registration
+User must do this themselves (takes days). Start immediately — can take 1-2 weeks.
 
-### 7. Voice Login on Lock Screen
+### 6. Voice Login on Lock Screen
 voice_profiles table exists, enrollment works, lock screen PIN UI doesn't offer voice auth yet.
 
-### 8. Real App Icon
+### 7. Real App Icon
 Placeholder C in place.
 
 ---
@@ -123,11 +132,16 @@ Placeholder C in place.
 - **Caregiver UUID:** generated once, never changes even on PIN reset
 - **Soft-delete alerts:** is_deleted flag, audit record always persists
 - **SPEECH_LANG_MAP:** ~line 4567 in index.html — maps lang codes to BCP-47 tags
+- **Translation cache:** `_translation_cache` dict in app.py — keyed by (text, from, to)
 
-## Key Endpoints Added Recently
-- GET /api/entries/dates — calendar metadata per day
-- PUT /api/entry/<id>/update-note — translation auto-save
-- GET /api/entries?dates=d1,d2,... — multi-date cal-panel fetch
+## Key Endpoints
+- GET/POST `/api/seed` — populate demo data
+- POST `/api/stt` — audio file → transcribed text (FormData: audio + lang)
+- POST `/api/translate` — {text, from, to} → {translated}
+- POST `/api/tts` — {text, lang} → MP3 audio
+- GET `/api/entries/dates` — calendar metadata per day
+- PUT `/api/entry/<id>/update-note` — translation auto-save
+- GET `/api/entries?dates=d1,d2,...` — multi-date cal-panel fetch
 
 ---
 
@@ -138,12 +152,9 @@ Placeholder C in place.
 
 ---
 
-## Session Context (2026-07-01)
-Last session ended mid-work due to connection drop. We were starting the **tap-anywhere TTS** feature on translate bubbles. No backend code was written — starting fresh this session. Railway deploy is working. GitHub Pages voice-test.html is live and working.
-
-**Git log (last 5):**
-1. Add gunicorn and Procfile for Railway deployment
-2. Use native SR on iOS Safari, only fall back to Whisper when SR unavailable
-3. Add iOS voice input and auto read-back to Translate tab
-4. Replace sandbox fake text with real Whisper.js transcription on iOS
-5. Unlock SpeechSynthesis on first tap to fix iOS auto read-back
+## Git log (last 5 as of end of session)
+1. Replace Whisper with backend STT via SpeechRecognition+Google — zero download
+2. Revert to whisper-tiny with language hint (superseded by backend STT)
+3. Add translation cache + retry
+4. Guard iOS MediaRecorder onstop against double-fire
+5. Move translation to backend using deep-translator
