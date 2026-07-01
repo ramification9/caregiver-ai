@@ -5034,14 +5034,14 @@ window.whisperTranscribe = async function(audioBlob, lang) {
     const notice = document.createElement('div');
     notice.id = 'whisper-notice';
     notice.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1B4F72;color:white;padding:10px 18px;border-radius:50px;font-size:13px;font-weight:600;z-index:9999;';
-    notice.textContent = isEnglish ? 'Downloading voice engine (~39MB, one-time)…' : 'Downloading voice engine (~139MB, one-time)…';
+    notice.textContent = 'Downloading voice engine (~75MB, one-time)…';
     document.body.appendChild(notice);
   }
 
   if (isEnglish && !_whisperEn) {
     _whisperEn = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
   } else if (!isEnglish && !_whisperMulti) {
-    _whisperMulti = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base');
+    _whisperMulti = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
   }
 
   document.getElementById('whisper-notice')?.remove();
@@ -5050,7 +5050,18 @@ window.whisperTranscribe = async function(audioBlob, lang) {
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
   const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
   const float32 = audioBuffer.getChannelData(0);
-  const result = await model(float32, { sampling_rate: 16000 });
+
+  // Pass language hint so Whisper stops guessing — dramatically improves non-English accuracy
+  const whisperOpts = { sampling_rate: 16000 };
+  if (!isEnglish && lang) {
+    const WHISPER_LANG = { es:'spanish', fr:'french', de:'german', zh:'chinese', ar:'arabic',
+      pt:'portuguese', ru:'russian', ja:'japanese', ko:'korean', vi:'vietnamese',
+      hi:'hindi', tl:'filipino', uk:'ukrainian', pl:'polish', it:'italian' };
+    const whisperLang = WHISPER_LANG[lang] || lang;
+    whisperOpts.language = whisperLang;
+    whisperOpts.task = 'transcribe';
+  }
+  const result = await model(float32, whisperOpts);
   return result.text.trim();
 };
 
