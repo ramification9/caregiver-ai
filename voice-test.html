@@ -35,6 +35,17 @@
   .transcript-box { margin-top: 20px; background: #F4F6F7; border: 1px solid #D5D8DC; border-radius: 8px; padding: 14px; min-height: 80px; font-size: 15px; color: #2C3E50; line-height: 1.6; }
   .transcript-box.empty { color: #A0A0A0; font-style: italic; }
 
+  /* Auto read toggle */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #F4F6F7; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; }
+  .toggle-row label { font-size: 14px; font-weight: 600; color: #2C3E50; }
+  .toggle-row span { font-size: 12px; color: #6C757D; }
+  .toggle { position: relative; width: 44px; height: 24px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 24px; cursor: pointer; transition: 0.2s; }
+  .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .toggle input:checked + .toggle-slider { background: #1E8449; }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+
   /* Read aloud button */
   .btn-read { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 50px; border: 2px solid #1E8449; background: white; color: #1E8449; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 14px; transition: all 0.2s; }
   .btn-read:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -74,6 +85,16 @@
   <hr class="divider">
 
   <div class="section-label">Step 3 — Read Aloud</div>
+  <div class="toggle-row">
+    <div>
+      <label for="auto-toggle">Auto Read-Back</label><br>
+      <span>Reads transcript automatically after recording</span>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="auto-toggle" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
   <button class="btn-read" id="read-btn" onclick="readAloud()" disabled>
     <span id="read-icon">🔊</span>
     <span id="read-label">Read It Back</span>
@@ -239,7 +260,13 @@
     box.textContent = text;
     box.classList.remove('empty');
     document.getElementById('read-btn').disabled = false;
-    log('Transcript ready — tap Read It Back to hear it');
+    const autoOn = document.getElementById('auto-toggle').checked;
+    if (autoOn) {
+      log('Transcript ready — auto read-back starting…');
+      setTimeout(readAloud, 400);
+    } else {
+      log('Transcript ready — tap Read It Back to hear it');
+    }
   }
 
   // ── Read aloud ────────────────────────────────────────────────────────────
