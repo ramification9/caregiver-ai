@@ -294,17 +294,47 @@ Placeholder C in place.
 
 ## ⚠️ STOPPED HERE — START NEXT SESSION FROM THIS POINT
 
+### 🔴 Critical Issues Found at End of Session 4 (2026-07-02)
+
+**Issue 1 — SQLite DB wipes on every Railway deploy**
+Every time code is pushed to GitHub, Railway redeploys and the SQLite database is reset to empty.
+All 40 Smart 40 test entries are gone. Calendar shows "No entries logged this month." Alert log shows 0.
+- Fix: re-enable `/api/seed` in live mode (remove the `if not SANDBOX_MODE` restriction in app.py ~line 1794)
+- Long term: migrate to PostgreSQL (Railway has free tier) for persistent storage between deploys
+
+**Issue 2 — Seed blocked in live mode**
+`/api/seed` returns 403 when SANDBOX_MODE=False. Without seed, History/Patterns/Summary/Alerts are all empty.
+- Fix: remove sandbox check on seed endpoint — just run seed → repopulate demo data after each deploy
+
+**Issue 3 — All tabs broken in live mode (no data)**
+History, Patterns, Summary, Alerts all show empty because DB was wiped. Not a code bug — data problem.
+Resolved once seed is re-enabled and run.
+
+**Issue 4 — Translator not listening**
+Translate tab STT not responding. Likely cause: microphone permission not granted in browser, or STT backend failing silently.
+- Check browser console for errors on Translate tab
+- Check Railway logs when STT endpoint is hit
+
+**Issue 5 — Alert log date filter**
+Filter was set to 07/15/2026 (future date) — click Clear to see all alerts. Minor UI issue, not a bug.
+
+**Note on Smart 40 validity:** The 40 test results are NOT invalidated. Outputs were documented in real time as they appeared. DB entries being gone does not affect the validation log — we recorded what we needed.
+
 ### Next session to-do in order:
-1. Fill Sheet 2 (Smart 40 Log) with all 40 test inputs/outputs as text
-2. Re-run hallucination test → screenshot result → save to `validation/01-hallucination-test/` → fill Sheet 1
-3. Enter token counts in Sheet 2 from Anthropic console download (caregiver-api-key, Jul 2)
-4. Export Excel to PDF for submission
-5. Take appendix screenshots (tests 18, 22, 34, 35, 37, Sheet 3 metrics)
-6. Run Translate tab test scenarios (8 tests above)
-7. Wait for SAM.gov UEI (ref INC-GSAFSD21299785, check far2990@gmail.com) → add to cover-page.md
-8. Fill phone + address in cover-page.md
-9. Record demo video on live Railway app
-10. Email to CaregiverAI@acl.hhs.gov by 2026-07-31 5:00 PM ET
+1. **Fix seed in live mode** — remove sandbox restriction on `/api/seed` in app.py, commit, confirm with Francisco, push
+2. **Run seed** → GET `https://web-production-88bed.up.railway.app/api/seed` → repopulates Robert + Jimmy 120-day data
+3. **Verify all tabs working** — History, Patterns, Summary, Alerts, Translate
+4. **Investigate translator STT** — check browser console + Railway logs
+5. Fill Sheet 2 (Smart 40 Log) with all 40 test inputs/outputs as text
+6. Re-run hallucination test → screenshot → save to `validation/01-hallucination-test/` → fill Sheet 1
+7. Enter token counts in Sheet 2 from Anthropic console (caregiver-api-key, Jul 2 download)
+8. Export Excel to PDF for submission
+9. Take appendix screenshots (tests 18, 22, 34, 35, 37, Sheet 3 metrics)
+10. Run Translate tab test scenarios (8 tests planned in Session 4 pins)
+11. Wait for SAM.gov UEI (ref INC-GSAFSD21299785, check far2990@gmail.com) → add to cover-page.md
+12. Fill phone + address in cover-page.md
+13. Record demo video on live Railway app
+14. Email to CaregiverAI@acl.hhs.gov by 2026-07-31 5:00 PM ET
 
 ---
 
